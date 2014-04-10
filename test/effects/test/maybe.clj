@@ -33,6 +33,25 @@
          (flat-map (maybe 5) (fn [x]
                                (flat-map (maybe-f x) maybe-g))))))
 
+(defn maybe-co-f [n]
+  (inc (extract n)))
+
+(defn maybe-co-g [n]
+  (+ (extract n) 5))
+
+(deftest first-co-law-maybe
+  (is (= (extend (maybe 10) extract)
+         (maybe 10))))
+
+(deftest second-co-law-maybe
+  (is (= (extract (extend (maybe 7) maybe-co-f))
+         (maybe-co-f (maybe 7)))))
+
+(deftest third-co-law-maybe
+  (is (= (extend (extend (maybe 2) maybe-co-f) maybe-co-f)
+         (extend (maybe 2) (fn [x]
+                             (maybe-co-f (extend x maybe-co-f)))))))
+
 (deftest zero-law-maybe
   (is (= (flat-map (m-zero (maybe nil)) maybe-f)
          (m-zero (maybe nil))))

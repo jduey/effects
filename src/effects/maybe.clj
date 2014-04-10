@@ -76,9 +76,8 @@
 
   Comonad
   (extract [_] v)
-  ;; (extend [ev f]
-  ;;   (wrap ev (f ev)))
-  )
+  (extend [ev f]
+    (wrap ev (f ev))))
 
 (def maybe
   (reify
@@ -90,7 +89,7 @@
     (invoke [_ v]
       (MaybeT. nil v))
     (applyTo [_ [v]]
-      (MaybeT. nil v))
+      (maybe v))
 
     Effects
     (ecomp* [effect effects]
