@@ -10,7 +10,7 @@
     Object
     (toString [_] "<Nothing>")
 
-    Functor
+    EndoFunctor
     (fmap [ev _] ev)
 
     Applicative
@@ -22,11 +22,11 @@
     (flat-map [_ _] nothing)
 
     MonadZero
-    (m-zero [_] nothing)
-    (m-plus* [_ evs]
+    (zero [_] nothing)
+    (plus* [_ evs]
       (if (empty? evs)
         nothing
-        (m-plus* (first evs) (rest evs))))))
+        (plus* (first evs) (rest evs))))))
 
 (deftype MaybeT [e v]
   Object
@@ -34,7 +34,7 @@
     (and (= (class x) (class y))
          (= v (extract y))))
 
-  Functor
+  EndoFunctor
   (fmap [ev f]
     (flat-map ev (fn [x] (wrap ev (f x)))))
 
@@ -60,17 +60,17 @@
           (MaybeT. nil (extract ev))))))
 
   MonadZero
-  (m-zero [ev]
+  (zero [ev]
     (if e
       (MaybeT. e (e nothing))
       nothing))
-  (m-plus* [mv mvs]
+  (plus* [mv mvs]
     (if e
       (MaybeT. e (flat-map (extract mv)
                            (fn [x]
                              (cond
                               (and (= x nothing) (empty? mvs)) (e nothing)
-                              (= x nothing) (extract (apply m-plus mvs))
+                              (= x nothing) (extract (apply plus mvs))
                               :else (e x)))))
       mv))
 

@@ -1,5 +1,5 @@
 (ns effects.state
-  (:refer-clojure :exclude [extend])
+  (:refer-clojure :exclude [extend for])
   (:require [effects :refer :all]
             [effects.id :refer [id]]))
 
@@ -28,7 +28,7 @@
                 (effect (list v s))))
             (str v)))
   (fapply* [wrapped-f args]
-    (if (= id e)
+    (if (= id effect)
       (flat-map wrapped-f #(comprehend % args))
       (throw (Exception. "hey there"))))
 
@@ -46,19 +46,19 @@
             (list "<flat-map>")))
 
   MonadZero
-  (m-zero [_]
+  (zero [_]
     (State. effect
-            (fn [s] (m-zero (effect :nil)))
-            (str (m-zero (effect :nil)))))
-  (m-plus* [mv mvs]
+            (fn [s] (zero (effect :nil)))
+            (str (zero (effect :nil)))))
+  (plus* [mv mvs]
     (State. effect
             (fn [s]
               (let [x (mv s)]
                 (cond
                  (empty? mvs) x
-                 (= (m-zero (effect :nil)) x) ((apply m-plus mvs) s)
+                 (= (zero (effect :nil)) x) ((apply plus mvs) s)
                  :else x)))
-            (list "<m-plus*>"))))
+            (list "<plus*>"))))
 
 (def state
   (reify

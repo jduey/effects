@@ -8,7 +8,7 @@
 (defn ecomp [effect & effects]
   (ecomp* effect effects))
 
-(defprotocol Functor
+(defprotocol EndoFunctor
   (fmap [v f]))
 
 (defprotocol Applicative
@@ -23,10 +23,10 @@
 
 (defprotocol MonadZero
   (zero [mval])
-  (m-plus* [mval mvals]))
+  (plus* [mval mvals]))
 
-(defn m-plus [mv & mvs]
-  (m-plus* mv mvs))
+(defn plus [mv & mvs]
+  (plus* mv mvs))
 
 (defprotocol Comonad
   (extract [wv])

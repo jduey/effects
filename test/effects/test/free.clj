@@ -9,7 +9,7 @@
   (toString [_]
     (pr-str b next))
 
-  Functor
+  EndoFunctor
   (fmap [_ f]
     (Output. b (f next)))
 
@@ -21,7 +21,7 @@
   (toString [_]
     (pr-str next))
 
-  Functor
+  EndoFunctor
   (fmap [_ f]
     (Bell. (f next)))
 
@@ -33,7 +33,7 @@
   (toString [_]
     "Done")
 
-  Functor
+  EndoFunctor
   (fmap [_ _]
     (Done.)))
 
@@ -92,12 +92,12 @@
   (Pure. x))
 
 (extend-type clojure.lang.PersistentVector
-  Functor
+  EndoFunctor
   (fmap [v f]
     (vec (map #(fmap % f) v))))
 
 (extend-type Object
-  Functor
+  EndoFunctor
   (fmap [v f]
     (f v))
 

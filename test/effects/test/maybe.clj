@@ -53,13 +53,13 @@
                              (maybe-co-f (extend x maybe-co-f)))))))
 
 (deftest zero-law-maybe
-  (is (= (flat-map (m-zero (maybe nil)) maybe-f)
-         (m-zero (maybe nil))))
-  (is (= (flat-map (maybe 4) (constantly (m-zero (maybe nil))))
-         (m-zero (maybe nil))))
-  (is (= (m-plus (maybe 6) (m-zero (maybe nil)))
+  (is (= (flat-map (zero (maybe nil)) maybe-f)
+         (zero (maybe nil))))
+  (is (= (flat-map (maybe 4) (constantly (zero (maybe nil))))
+         (zero (maybe nil))))
+  (is (= (plus (maybe 6) (zero (maybe nil)))
          (maybe 6)))
-  (is (= (m-plus (m-zero (maybe nil)) (maybe 6))
+  (is (= (plus (zero (maybe nil)) (maybe 6))
          (maybe 6))))
 
 
@@ -71,13 +71,13 @@
   (mm (+ n 5)))
 
 (deftest mm-functor
-  (is (= (m-zero (mm nil)) (fmap (m-zero (mm nil)) inc)))
+  (is (= (zero (mm nil)) (fmap (zero (mm nil)) inc)))
   (is (= (mm 2) (fmap (mm 2) identity)))
   (is (= (mm 5) (fmap (mm 4) inc))))
 
 (deftest mm-applicative
-  (is (= (m-zero (mm nil)) (fapply list (m-zero (mm nil)) (mm 8))))
-  (is (= (m-zero (mm nil)) (fapply list (mm 8) (m-zero (mm nil)))))
+  (is (= (zero (mm nil)) (fapply list (zero (mm nil)) (mm 8))))
+  (is (= (zero (mm nil)) (fapply list (mm 8) (zero (mm nil)))))
   (is (= (mm [8 9]) (fapply list (mm 8) (mm 9)))))
 
 (deftest first-law-mm
@@ -94,11 +94,11 @@
                                (flat-map (mm-f x) mm-g))))))
 
 (deftest zero-law-mm
-  (is (= (flat-map (m-zero (mm nil)) mm-f)
-         (m-zero (mm nil))))
-  (is (= (flat-map (mm 4) (constantly (m-zero (mm nil))))
-         (m-zero (mm nil))))
-  (is (= (m-plus (mm 6) (m-zero (mm nil)))
+  (is (= (flat-map (zero (mm nil)) mm-f)
+         (zero (mm nil))))
+  (is (= (flat-map (mm 4) (constantly (zero (mm nil))))
+         (zero (mm nil))))
+  (is (= (plus (mm 6) (zero (mm nil)))
          (mm 6)))
-  (is (= (m-plus (m-zero (mm nil)) (mm 6))
+  (is (= (plus (zero (mm nil)) (mm 6))
          (mm 6))))
