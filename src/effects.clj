@@ -1,5 +1,5 @@
 (ns effects
-  (:refer-clojure :exclude [extend]))
+  (:refer-clojure :exclude [extend for]))
 
 (defprotocol Effects
   (ecomp* [effect effects])
@@ -22,7 +22,7 @@
   (flat-map [mval func]))
 
 (defprotocol MonadZero
-  (m-zero [mval])
+  (zero [mval])
   (m-plus* [mval mvals]))
 
 (defn m-plus [mv & mvs]
@@ -66,7 +66,7 @@
                            (reverse (rest mvs)))]
     (flat-map fmv (partial rest-steps []))))
 
-(extend-type Object
+#_(extend-type Object
   Functor
   (fmap [v f]
     (cond
@@ -82,3 +82,21 @@
      (satisfies? Monad wrapped-f) (flat-map wrapped-f #(comprehend % args))
      :else (throw (Exception. (str wrapped-f " does not implement 'fapply'")))))
   )
+
+(defmacro for [bindings expr]
+  (let [steps (rest (partition 2 bindings))
+        val-sym (gensym "for_")]
+    `(let [~val-sym ~(second bindings)]
+       (effects/flat-map ~val-sym
+                         (fn [~(first bindings)]
+                           ~(reduce (fn [expr [sym mv]]
+                                      (cond
+                                       (= :when sym) `(if ~mv
+                                                        ~expr
+                                                        (effects/zero ~val-sym))
+                                       (= :let sym) `(let ~mv
+                                                       ~expr)
+                                       :else `(effects/flat-map ~mv (fn [~sym]
+                                                                      ~expr))))
+                                    `(effects/wrap ~val-sym ~expr)
+                                    (reverse steps)))))))
