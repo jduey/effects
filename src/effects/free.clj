@@ -86,6 +86,15 @@
     (FreeT. e (flat-map v (fn [x]
                             (e (fmap x (fn [ev] (flat-map ev f))))))))
 
+  MonadZero
+  (zero [_]
+    (FreeT. e (zero (e :nil))))
+  (plus* [mv mvs]
+    (FreeT. e
+            (->> (cons mv mvs)
+                 (map extract)
+                 (apply plus))))
+
   Comonad
   (extract [_] v))
 

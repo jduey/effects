@@ -24,7 +24,7 @@
 
   MonadZero
   (zero [_] [])
-  (plus* [mv mvs] (apply concat mv mvs)))
+  (plus* [mv mvs] (vec (apply concat mv mvs))))
 
 (println "------------")
 
@@ -70,46 +70,47 @@
 #_(def done (liftF (Done.)))
 (def done (liftFT vector (Done.)))
 
-(def subr (for [_ (output :a)
-                _ (output :b)]
-            8))
-
-(prn :subr subr)
-
 (defprotocol ShowProg
-  (show [v wrapper]))
+  (show* [v wrapper]))
+
+(defn show [v]
+  (show* v identity))
 
 (extend-type Output
   ShowProg
-  (show [ev _]
+  (show* [ev wrapper]
     (let [[v x] (extract ev)]
-      (for [s (show x _)]
-        (str "output " v \newline s)))))
+      (flat-map (show x)
+                (fn [s]
+                  (wrapper (str "output " v \newline s)))))))
 
 (extend-type Bell
   ShowProg
-  (show [ev _]
-    (for [s (show (extract ev) _)]
-      (str "bell" \newline s))))
+  (show* [ev wrapper]
+    (flat-map (show (extract ev))
+              (fn [s]
+                (wrapper (str "bell" \newline s))))))
 
 (extend-type Done
   ShowProg
-  (show [ev wrapper]
+  (show* [ev wrapper]
     (wrapper (str "done" \newline))))
 
 (extend-type FreeT
   ShowProg
-  (show [ev _]
+  (show* [ev _]
     (let [v (extract ev)]
-      (flat-map v #(show % (partial wrap v))))))
+      (flat-map v #(show* % (partial wrap v))))))
 
 (extend-type Pure
   ShowProg
-  (show [ev _]
-    (for [v (extract ev)]
-      (str "return " v \newline))))
+  (show* [ev wrapper]
+    (let [v (extract ev)]
+      (flat-map v
+                (fn [x]
+                  (wrap v (str "return " x \newline)))))))
 
-(defn pretty [x] (print (show x identity)))
+(defn pretty [x] (print (show x)))
 
 (defn return [x]
   (Pure. x))
@@ -124,15 +125,19 @@
     (extract (f v))))
 
 
+(def subr (plus (output :a)
+                (output :b)))
 
-(def prog (for [v subr
+(prn :subr subr)
+
+(def prog (for [_ subr
                 ;; :let [_ (prn :prog-v v)]
                 _ bell
-                _ done]
+                #_ done]
             :bogus))
 
 (prn :prog prog)
 (println)
 
-(prn (show prog identity))
-(pretty prog)
+(prn (show prog))
+#_(pretty prog)
