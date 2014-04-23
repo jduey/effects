@@ -8,9 +8,25 @@
 
 (ns effects.test.free
   (:refer-clojure :exclude [extend for])
-  (:require [effects :refer :all]
+  (:require [clojure.test :refer :all]
+            [effects :refer :all]
             [effects.free :refer :all])
-  (:import [effects.free Pure Free]))
+  (:import [effects.free Pure Free FreeT]))
+
+(extend-type clojure.lang.PersistentVector
+  Applicative
+  (wrap [_ v]
+    [v])
+
+  Monad
+  (flat-map [vs f]
+    (vec (mapcat f vs)))
+
+  MonadZero
+  (zero [_] [])
+  (plus* [mv mvs] (apply concat mv mvs)))
+
+(println "------------")
 
 (deftype Output [b next]
   Object
@@ -45,66 +61,60 @@
   (fmap [_ _]
     (Done.)))
 
-(defn output [x] (liftF (Output. x nil)))
-(def bell (liftF (Bell. nil)))
-(def done (liftF (Done.)))
+#_(defn output [x] (liftF (Output. x nil)))
+(defn output [x] (liftFT vector (Output. x :output-next)))
+
+#_(def bell (liftF (Bell. nil)))
+(def bell (liftFT vector (Bell. :bell-next)))
+
+#_(def done (liftF (Done.)))
+(def done (liftFT vector (Done.)))
 
 (def subr (for [_ (output :a)
                 _ (output :b)]
             8))
 
-(def prog (for [v subr
-                _ bell
-                _ done]
-            nil))
-
+(prn :subr subr)
 
 (defprotocol ShowProg
-  (show [_]))
+  (show [v wrapper]))
 
 (extend-type Output
   ShowProg
-  (show [ev]
+  (show [ev _]
     (let [[v x] (extract ev)]
-      (str "output " v \newline (show x)))))
+      (for [s (show x _)]
+        (str "output " v \newline s)))))
 
 (extend-type Bell
   ShowProg
-  (show [ev]
-    (let [x (extract ev)]
-      (str "bell" \newline (show x)))))
+  (show [ev _]
+    (for [s (show (extract ev) _)]
+      (str "bell" \newline s))))
 
 (extend-type Done
   ShowProg
-  (show [ev]
-    (str "done" \newline)))
+  (show [ev wrapper]
+    (wrapper (str "done" \newline))))
+
+(extend-type FreeT
+  ShowProg
+  (show [ev _]
+    (let [v (extract ev)]
+      (flat-map v #(show % (partial wrap v))))))
 
 (extend-type Pure
   ShowProg
-  (show [ev]
-    (str "return" (extract ev) \newline)))
+  (show [ev _]
+    (for [v (extract ev)]
+      (str "return " v \newline))))
 
-(extend-type Free
-  ShowProg
-  (show [ev]
-    (show (extract ev))))
-
-(println)
-(prn :subr subr)
-(println :prog)
-(println  (show prog))
-
-(defn pretty [x] (print (show x)))
+(defn pretty [x] (print (show x identity)))
 
 (defn return [x]
   (Pure. x))
 
-(extend-type clojure.lang.PersistentVector
-  EndoFunctor
-  (fmap [v f]
-    (vec (map #(fmap % f) v))))
-
-(extend-type Object
+#_(extend-type Object
   EndoFunctor
   (fmap [v f]
     (f v))
@@ -113,5 +123,16 @@
   (flat-map [v f]
     (extract (f v))))
 
-(prn :x (for [x (Free. [1 2 3])]
-          (inc x)))
+
+
+(def prog (for [v subr
+                ;; :let [_ (prn :prog-v v)]
+                _ bell
+                _ done]
+            :bogus))
+
+(prn :prog prog)
+(println)
+
+(prn (show prog identity))
+(pretty prog)

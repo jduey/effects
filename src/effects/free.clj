@@ -20,7 +20,7 @@
     (Pure. v))
 
   Monad
-  (flat-map [ev f]
+  (flat-map [_ f]
     (f v))
 
   Comonad
@@ -47,3 +47,47 @@
 
 (defn liftF [f-val]
   (Free. (fmap f-val (fn [x] (Pure. x)))))
+
+(deftype PureT [e v]
+  Object
+  (equals [x y]
+    (and (= (class x) (class y))
+         (= v (extract y))))
+  (toString [_]
+    (pr-str v))
+
+  Applicative
+  (wrap [_ v]
+    (PureT. e (e v)))
+
+  Monad
+  (flat-map [_ f]
+    (let [q (flat-map v (fn [x] (extract (f x))))]
+      (prn :puret-flat-map q)
+      (PureT. e q)))
+
+  Comonad
+  (extract [_] v))
+
+(deftype FreeT [e v]
+  Object
+  (equals [x y]
+    (and (= (class x) (class y))
+         (= v (extract y))))
+  (toString [_]
+    (pr-str v))
+
+  Applicative
+  (wrap [_ v]
+    (Pure. (e v)))
+
+  Monad
+  (flat-map [ev f]
+    (FreeT. e (flat-map v (fn [x]
+                            (e (fmap x (fn [ev] (flat-map ev f))))))))
+
+  Comonad
+  (extract [_] v))
+
+(defn liftFT [m f-val]
+  (FreeT. m (m (fmap f-val (fn [x] (Pure. (m x)))))))
