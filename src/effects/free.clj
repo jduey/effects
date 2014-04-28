@@ -7,7 +7,7 @@
 ; You must not remove this notice, or any other, from this software.
 
 (ns effects.free
-  (:refer-clojure :exclude [extend for])
+  (:refer-clojure :exclude [extend for seq])
   (:require [effects :refer :all]))
 
 (deftype Pure [v]
@@ -26,7 +26,6 @@
   Comonad
   (extract [_] v))
 
-
 (deftype Free [val]
   Object
   (toString [_]
@@ -40,34 +39,26 @@
   (flat-map [_ f]
     (Free. (fmap val #(flat-map % f))))
 
+  ;; Arrow
+  ;; (arrow-arr [_ f]
+  ;;   (fn [x]
+  ;;     (Pure. (f x))))
+  ;; (arrow-seq [p ps]
+  ;;   (if (empty? ps)
+  ;;     p
+  ;;     (let [rest-p (arrow-seq (first ps) (rest ps))]
+  ;;       (fn [s]
+  ;;         (flat-map (p s) rest-p)))))
+  ;; (arrow-nth [ev n]
+  ;;   )
+
   Comonad
   (extract [_]
     val))
 
-
 (defn liftF [f-val]
   (Free. (fmap f-val (fn [x] (Pure. x)))))
 
-(deftype PureT [e v]
-  Object
-  (equals [x y]
-    (and (= (class x) (class y))
-         (= v (extract y))))
-  (toString [_]
-    (pr-str v))
-
-  Applicative
-  (wrap [_ v]
-    (PureT. e (e v)))
-
-  Monad
-  (flat-map [_ f]
-    (let [q (flat-map v (fn [x] (extract (f x))))]
-      (prn :puret-flat-map q)
-      (PureT. e q)))
-
-  Comonad
-  (extract [_] v))
 
 (deftype FreeT [e v]
   Object
@@ -79,12 +70,13 @@
 
   Applicative
   (wrap [_ v]
-    (Pure. (e v)))
+    (Pure. v))
 
   Monad
   (flat-map [ev f]
     (FreeT. e (flat-map v (fn [x]
-                            (e (fmap x (fn [ev] (flat-map ev f))))))))
+                            (e (fmap x (fn [ev]
+                                         (flat-map ev f))))))))
 
   MonadZero
   (zero [_]

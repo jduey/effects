@@ -7,7 +7,7 @@
 ; You must not remove this notice, or any other, from this software.
 
 (ns effects
-  (:refer-clojure :exclude [extend for]))
+  (:refer-clojure :exclude [extend for seq]))
 
 (defprotocol Effects
   (ecomp* [effect effects])
@@ -45,6 +45,9 @@
   (arrow-arr [_ f])
   (arrow-seq [p ps])
   (arrow-nth [p n]))
+
+#_(defn seq [& ps]
+  (arrow-seq (first ps) (rest ps)))
 
 ;; effecient parallel protocol
 (defprotocol ArrowPar
