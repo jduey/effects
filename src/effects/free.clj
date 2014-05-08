@@ -26,45 +26,8 @@
   Comonad
   (extract [_] v))
 
-(deftype Free [val]
+(deftype Free [v]
   Object
-  (toString [_]
-    (pr-str val))
-
-  Applicative
-  (wrap [_ v]
-    (Pure. v))
-
-  Monad
-  (flat-map [_ f]
-    (Free. (fmap val #(flat-map % f))))
-
-  ;; Arrow
-  ;; (arrow-arr [_ f]
-  ;;   (fn [x]
-  ;;     (Pure. (f x))))
-  ;; (arrow-seq [p ps]
-  ;;   (if (empty? ps)
-  ;;     p
-  ;;     (let [rest-p (arrow-seq (first ps) (rest ps))]
-  ;;       (fn [s]
-  ;;         (flat-map (p s) rest-p)))))
-  ;; (arrow-nth [ev n]
-  ;;   )
-
-  Comonad
-  (extract [_]
-    val))
-
-(defn liftF [f-val]
-  (Free. (fmap f-val (fn [x] (Pure. x)))))
-
-
-(deftype FreeT [e v]
-  Object
-  (equals [x y]
-    (and (= (class x) (class y))
-         (= v (extract y))))
   (toString [_]
     (pr-str v))
 
@@ -73,22 +36,41 @@
     (Pure. v))
 
   Monad
-  (flat-map [ev f]
-    (FreeT. e (flat-map v (fn [x]
-                            (e (fmap x (fn [ev]
-                                         (flat-map ev f))))))))
-
-  MonadZero
-  (zero [_]
-    (FreeT. e (zero (e :nil))))
-  (plus* [mv mvs]
-    (FreeT. e
-            (->> (cons mv mvs)
-                 (map extract)
-                 (apply plus))))
+  (flat-map [_ f]
+    (Free. (fmap v #(flat-map % f))))
 
   Comonad
   (extract [_] v))
 
-(defn liftFT [m f-val]
-  (FreeT. m (m (fmap f-val (fn [x] (Pure. (m x)))))))
+(defn liftF [f-val]
+  (Free. (fmap f-val (fn [x] (Pure. x)))))
+
+
+(deftype FreeT [mv]
+  Object
+  (toString [_]
+    (pr-str mv))
+
+  Applicative
+  (wrap [_ v]
+    (FreeT. (wrap mv v)))
+
+
+  Monad
+  (flat-map [ev f]
+    (FreeT. (flat-map mv (fn [x]
+                           (wrap mv (fmap x (fn [ev] (flat-map ev f))))))))
+
+  MonadZero
+  (zero [_]
+    (FreeT. (zero (wrap mv :nil))))
+  (plus* [mv mvs]
+    (FreeT. (->> (cons mv mvs)
+                 (map extract)
+                 (apply plus))))
+
+  Comonad
+  (extract [_] mv))
+
+(defn liftFT [f-val]
+  (FreeT. (fmap f-val (fn [x] (Pure. (wrap f-val x))))))

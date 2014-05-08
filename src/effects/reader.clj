@@ -17,8 +17,8 @@
   clojure.lang.IFn
   (invoke [_ s]
     (invoke-fn s))
-  (applyTo [_ [v]]
-    (invoke-fn v))
+  (applyTo [_ [s]]
+    (invoke-fn s))
 
   Applicative
   (wrap [_ v]
