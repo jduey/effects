@@ -20,6 +20,10 @@
   (applyTo [_ [s]]
     (invoke-fn s))
 
+  EndoFunctor
+  (fmap [rdr f]
+    (flat-map rdr (fn [x] (reader (f x)))))
+
   Applicative
   (wrap [_ v]
     (Reader. (constantly v)))

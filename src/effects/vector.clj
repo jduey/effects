@@ -16,6 +16,10 @@
   (wrap [_ v]
     [v])
 
+  EndoFunctor
+  (fmap [vct f]
+    (vec (map f vct)))
+
   Monad
   (flat-map [vs f]
     (vec (mapcat f vs)))
