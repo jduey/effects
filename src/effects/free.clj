@@ -10,14 +10,22 @@
   (:refer-clojure :exclude [extend for seq])
   (:require [effects :refer :all]))
 
+(declare free)
+
 (deftype Pure [v]
   Object
   (toString [_]
     (pr-str v))
 
+  EndoFunctor
+  (fmap [_ f]
+    (Pure. (f v)))
+
   Applicative
   (wrap [_ v]
     (Pure. v))
+  (fapply* [_ [tx]]
+    (fmap tx v))
 
   Monad
   (flat-map [_ f]
@@ -26,14 +34,35 @@
   Comonad
   (extract [_] v))
 
+(deftype Ap [h x]
+  Object
+  (toString [_]
+    (pr-str h x))
+
+  EndoFunctor
+  (fmap [_ f]
+    (Ap. (fmap h #(comp f %)) x))
+
+  Applicative
+  (wrap [_ v]
+    (Pure. v))
+  (fapply* [_ [y]]
+    (Ap. (fmap h #(partial apply %))
+         (Ap. (fmap x #(partial cons %))
+              (fmap y list)))))
+
 (deftype Free [v]
   Object
   (toString [_]
     (pr-str v))
 
+  EndoFunctor
+  (fmap [_ f]
+    (Free. (fmap v #(fmap % f))))
+
   Applicative
-  (wrap [_ v]
-    (Pure. v))
+  (wrap [_ new-v]
+    (Free. (Pure. new-v)))
 
   Monad
   (flat-map [_ f]
@@ -41,6 +70,9 @@
 
   Comonad
   (extract [_] v))
+
+(defn free [v]
+  (Free. v))
 
 (defn liftF [f-val]
   (Free. (fmap f-val (fn [x] (Pure. x)))))

@@ -4,150 +4,148 @@
             [effects.free :refer :all]
             [effects.vector :refer :all]
             [effects.reader :refer :all])
-  (:import [effects.free Free Pure FreeT]))
+  (:import [effects.free Free Pure FreeT Ap]))
 
-;; (deftype Tag [name attr contents]
-;;   Object
-;;   (toString [_]
-;;     (pr-str name attr contents)))
+(deftype Tag [name attr contents]
+  Object
+  (toString [_]
+    (pr-str name attr contents)))
 
-;; (defn tag [name]
-;;   (fn [attr contents]
-;;     (Tag. name attr contents)))
+(defn tag [name]
+  (fn [attr contents]
+    (Tag. name attr contents)))
 
-;; (def html (tag "html"))
-;; (def body (tag "body"))
-;; (def p (tag "p"))
+(def html (tag "html"))
+(def body (tag "body"))
+(def p (tag "p"))
 
-;; (def page (html {}
-;;                 (body {}
-;;                       (p {} "first paragraph"))))
+(def page (html {}
+                (body {}
+                      (p {} "first paragraph"))))
 
-;; (defprotocol XML
-;;   (xml [v]))
+(defprotocol XML
+  (xml [v]))
 
-;; (extend-type Tag
-;;   XML
-;;   (xml [t]
-;;     (let [contents (xml (.contents t))]
-;;       (str "<" (.name t) ">\n" contents "\n</" (.name t) ">"))))
+(extend-type Tag
+  XML
+  (xml [t]
+    (let [contents (xml (.contents t))]
+      (str "<" (.name t) ">\n" contents "\n</" (.name t) ">"))))
 
-;; (extend-type java.lang.String
-;;   XML
-;;   (xml [ev] ev))
+(extend-type java.lang.String
+  XML
+  (xml [ev] ev))
 
-;; (println (xml page))
-;; (println)
+(println (xml page))
+(println)
 
-;; (deftype Tag [name attr contents next]
-;;   Object
-;;   (toString [_]
-;;     (pr-str name attr contents next)))
+(deftype Tag [name attr contents next]
+  Object
+  (toString [_]
+    (pr-str name attr contents next)))
 
-;; (defn tag [name]
-;;   (fn [attr contents next]
-;;     (Tag. name attr contents next)))
+(defn tag [name]
+  (fn [attr contents next]
+    (Tag. name attr contents next)))
 
-;; (def html (tag "html"))
-;; (def head (tag "head"))
-;; (def title (tag "title"))
-;; (def body (tag "body"))
-;; (def p (tag "p"))
+(def html (tag "html"))
+(def head (tag "head"))
+(def title (tag "title"))
+(def body (tag "body"))
+(def p (tag "p"))
 
-;; (def page (html {}
-;;                 (head {}
-;;                       (title {} "This Is The Title" nil)
-;;                       (body {}
-;;                             (p {} "first paragraph"
-;;                                (p {} "second paragraph" nil))
-;;                             nil))
-;;                 nil))
+(def page (html {}
+                (head {}
+                      (title {} "This Is The Title" nil)
+                      (body {}
+                            (p {} "first paragraph"
+                               (p {} "second paragraph" nil))
+                            nil))
+                nil))
 
-;; (extend-type Tag
-;;   XML
-;;   (xml [t]
-;;     (let [contents (when (.contents t)
-;;                      (xml (.contents t)))
-;;           next (when (.next t)
-;;                  (str \newline (xml (.next t))))]
-;;       (str "<" (.name t) ">\n" contents "\n</" (.name t) ">" next))))
+(extend-type Tag
+  XML
+  (xml [t]
+    (let [contents (when (.contents t)
+                     (xml (.contents t)))
+          next (when (.next t)
+                 (str \newline (xml (.next t))))]
+      (str "<" (.name t) ">\n" contents "\n</" (.name t) ">" next))))
 
-;; (println (xml page))
-;; (println)
+(println (xml page))
+(println)
 
-;; (defn tag [name]
-;;   (fn [attr & contents]
-;;     (Tag. name attr contents nil)))
+(defn tag [name]
+  (fn [attr & contents]
+    (Tag. name attr contents nil)))
 
-;; (def html (tag "html"))
-;; (def head (tag "head"))
-;; (def title (tag "title"))
-;; (def body (tag "body"))
-;; (def p (tag "p"))
+(def html (tag "html"))
+(def head (tag "head"))
+(def title (tag "title"))
+(def body (tag "body"))
+(def p (tag "p"))
 
-;; (def page (html {}
-;;                 (head {}
-;;                       (title {} "This Is The Title"))
-;;                 (body {}
-;;                       (p {} "first paragraph")
-;;                       (p {} "second paragraph"))))
+(def page (html {}
+                (head {}
+                      (title {} "This Is The Title"))
+                (body {}
+                      (p {} "first paragraph")
+                      (p {} "second paragraph"))))
 
-;; ;; Errors out
-;; #_(println (xml page))
-;; #_(println)
+;; Errors out
+#_(println (xml page))
+#_(println)
 
-;; (extend-type Tag
-;;   EndoFunctor
-;;   (fmap [t f]
-;;     (Tag. (.name t) (.attr t) (.contents t) (f (.next t)))))
+(extend-type Tag
+  EndoFunctor
+  (fmap [t f]
+    (Tag. (.name t) (.attr t) (.contents t) (f (.next t)))))
 
-;; ;; Explain the Free Monad
+;; Explain the Free Monad
 
-;; (defn tag [name]
-;;   (fn [attr & contents]
-;;     (let [contents (reduce (fn [ev next]
-;;                              (flat-map ev (fn [_] next)))
-;;                            contents)]
-;;       (Free. (fmap (Tag. name attr contents nil)
-;;                    (fn [x] (Pure. x)))))))
+(defn tag [name]
+  (fn [attr & contents]
+    (let [contents (reduce (fn [ev next]
+                             (flat-map ev (fn [_] next)))
+                           contents)]
+      (Free. (fmap (Tag. name attr contents nil)
+                   (fn [x] (Pure. x)))))))
 
-;; (def html (tag "html"))
-;; (def head (tag "head"))
-;; (def title (tag "title"))
-;; (def body (tag "body"))
-;; (def p (tag "p"))
+(def html (tag "html"))
+(def head (tag "head"))
+(def title (tag "title"))
+(def body (tag "body"))
+(def p (tag "p"))
 
-;; (def page (html {}
-;;                 (head {}
-;;                       (title {} "This Is The Title"))
-;;                 (body {}
-;;                       (p {} "first paragraph")
-;;                       (p {} "second paragraph")
-;;                       (p {} "third paragraph"))))
+(def page (html {}
+                (head {}
+                      (title {} "This Is The Title"))
+                (body {}
+                      (p {} "first paragraph")
+                      (p {} "second paragraph")
+                      (p {} "third paragraph"))))
 
-;; (extend-type Tag
-;;   XML
-;;   (xml [t]
-;;     (let [contents (xml (.contents t))
-;;           next (xml (.next t))]
-;;       (str "<" (.name t) ">\n" contents "\n</" (.name t) ">"
-;;            (if (= next "")
-;;              ""
-;;              (str \newline next))))))
+(extend-type Tag
+  XML
+  (xml [t]
+    (let [contents (xml (.contents t))
+          next (xml (.next t))]
+      (str "<" (.name t) ">\n" contents "\n</" (.name t) ">"
+           (if (= next "")
+             ""
+             (str \newline next))))))
 
-;; (extend-type Pure
-;;   XML
-;;   (xml [ev]
-;;     (str (extract ev))))
+(extend-type Pure
+  XML
+  (xml [ev]
+    (str (extract ev))))
 
-;; (extend-type Free
-;;   XML
-;;   (xml [ev]
-;;     (xml (extract ev))))
+(extend-type Free
+  XML
+  (xml [ev]
+    (xml (extract ev))))
 
-;; (println (xml page))
-;; (println)
-
+(println (xml page))
 (println)
 
 (defprotocol XML
@@ -169,7 +167,7 @@
                            contents)
           contents (if (= Free (type contents))
                      contents
-                     (Pure. contents))]
+                     (Free. (Pure. contents)))]
       (Free. (Tag. name attr contents (Pure. nil))))))
 
 (extend-type Tag
@@ -303,6 +301,9 @@
                       :second-para "a better paragraph"}))
 (println)
 
+;; ;; *****************
+;; ;; Formatted XML
+
 ;; (defprotocol XML
 ;;   (format-xml* [ev wrapper indent]))
 
@@ -379,3 +380,44 @@
 ;;                       :second-para "second paragraph"}))
 ;; (println)
 
+
+;; *********************
+;; Free Applicative
+
+(deftype Endo [x]
+  Object
+  (toString [_] (pr-str x))
+
+  EndoFunctor
+  (fmap [_ f] (Endo. (f x)))
+
+  Comonad
+  (extract [_] x))
+
+(defprotocol Perform
+  (perform [_]))
+
+(extend-type Pure
+  Perform
+  (perform [pv]
+    (extract pv)))
+
+(extend-type Ap
+  Perform
+  (perform [ev]
+    ((extract (.h ev)) (perform (.x ev)))))
+
+(println)
+(def a (Ap. (Endo. inc) (Pure. 4)))
+(prn a)
+(prn (perform a))
+
+(println)
+(def a (fmap (Ap. (Endo. inc) (Pure. 4)) str))
+(prn a)
+(prn (perform a))
+
+(println)
+(def b (fapply* (Ap. (Endo. +) (Pure. 4)) [(Pure. 8)]))
+(prn b)
+(prn (perform b))
