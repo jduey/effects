@@ -12,6 +12,8 @@
 
 (declare free)
 
+(declare freeA)
+
 (deftype Pure [v]
   Object
   (toString [_]
@@ -24,8 +26,16 @@
   Applicative
   (wrap [_ v]
     (Pure. v))
-  (fapply* [_ [tx]]
-    (fmap tx v))
+  (fapply* [_ args]
+    (if (= 1 (count args))
+      (freeA (fmap v #(partial apply %))
+             (fmap (first args) list))
+      (freeA (fmap v #(partial apply %))
+             (apply fapply
+                    (fmap (first args) (fn [arg]
+                                         (fn [& xs]
+                                           (cons arg xs))))
+                    (rest args)))))
 
   Monad
   (flat-map [_ f]
@@ -37,19 +47,10 @@
 (deftype Ap [h x]
   Object
   (toString [_]
-    (pr-str h x))
+    (pr-str h x)))
 
-  EndoFunctor
-  (fmap [_ f]
-    (Ap. (fmap h #(comp f %)) x))
-
-  Applicative
-  (wrap [_ v]
-    (Pure. v))
-  (fapply* [_ [y]]
-    (Ap. (fmap h #(partial apply %))
-         (Ap. (fmap x #(partial cons %))
-              (fmap y list)))))
+(defn freeA [f x]
+  (Ap. f x))
 
 (deftype Free [v]
   Object
@@ -58,11 +59,22 @@
 
   EndoFunctor
   (fmap [_ f]
-    (Free. (fmap v #(fmap % f))))
+    (Free. (fmap v f)))
 
   Applicative
   (wrap [_ new-v]
-    (Free. (Pure. new-v)))
+    (Free. new-v))
+  (fapply* [_ args]
+    (if (= 1 (count args))
+      (freeA (fmap v #(partial apply %))
+             (fmap (first args) list))
+      (freeA (fmap v #(partial apply %))
+             (apply fapply
+                    (fmap (extract (first args))
+                          (fn [arg]
+                            (fn [& xs]
+                              (cons arg xs))))
+                    (rest args)))))
 
   Monad
   (flat-map [_ f]

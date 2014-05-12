@@ -384,6 +384,9 @@
 ;; *********************
 ;; Free Applicative
 
+(defprotocol Perform
+  (perform [_]))
+
 (deftype Endo [x]
   Object
   (toString [_] (pr-str x))
@@ -391,11 +394,11 @@
   EndoFunctor
   (fmap [_ f] (Endo. (f x)))
 
+  Perform
+  (perform [_] x)
+
   Comonad
   (extract [_] x))
-
-(defprotocol Perform
-  (perform [_]))
 
 (extend-type Pure
   Perform
@@ -407,17 +410,42 @@
   (perform [ev]
     ((extract (.h ev)) (perform (.x ev)))))
 
-(println)
-(def a (Ap. (Endo. inc) (Pure. 4)))
-(prn a)
-(prn (perform a))
+(extend-type Free
+  Perform
+  (perform [f]
+    (perform (extract f))))
 
 (println)
-(def a (fmap (Ap. (Endo. inc) (Pure. 4)) str))
-(prn a)
-(prn (perform a))
+(def b (fmap (Free. (Endo. :bogus)) vector))
+(prn b)
+#_(prn (perform b))
 
 (println)
-(def b (fapply* (Ap. (Endo. +) (Pure. 4)) [(Pure. 8)]))
+(def b (fapply (Pure. inc) (Pure. 9)))
+(prn b)
+(prn (perform b))
+
+(println)
+(def b (fapply (Endo. +) (Pure. 9) (Pure. 5)))
+(prn b)
+(prn (perform b))
+
+(println)
+(def b (fapply (Endo. +) (Pure. 9) (Pure. 5) (Pure. 100)))
+(prn b)
+(prn (perform b))
+
+(println)
+(def b (fapply (Endo. inc) (Free. (Endo. 8))))
+(prn b)
+(prn (perform b))
+
+(println)
+(def b (fapply (Endo. +) (Free. (Endo. 100)) (Free. (Endo. 8)) (Free. (Endo. 7))))
+(prn b)
+(prn (perform b))
+
+(println)
+(def b (fapply (Endo. +) (Free. (Endo. 100)) (Pure. 8) (Free. (Endo. 7))))
 (prn b)
 (prn (perform b))
