@@ -29,7 +29,7 @@
     Monad
     (flat-map [_ _] nothing)
 
-    MonadZero
+    Monoid
     (zero [_] nothing)
     (plus* [_ evs]
       (if (empty? evs)
@@ -67,7 +67,7 @@
           nothing
           (MaybeT. nil (extract ev))))))
 
-  MonadZero
+  Monoid
   (zero [ev]
     (if e
       (MaybeT. e (e nothing))
@@ -99,11 +99,11 @@
     (applyTo [_ [v]]
       (maybe v))
 
-    Effects
-    (ecomp* [effect effects]
+    Monoid
+    (plus* [effect effects]
       (if (empty? effects)
         maybe
-        (let [e (apply ecomp effects)]
+        (let [e (apply plus effects)]
           (reify
             Object
             (toString [_]

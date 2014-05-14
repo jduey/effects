@@ -9,12 +9,15 @@
 (ns effects
   (:refer-clojure :exclude [extend for seq]))
 
-(defprotocol Effects
-  (ecomp* [effect effects])
-  (lift [effect fn]))
+(defprotocol Monoid
+  (zero [_])
+  (plus* [_ _]))
 
-(defn ecomp [effect & effects]
-  (ecomp* effect effects))
+(defn plus [mv & mvs]
+  (plus* mv mvs))
+
+(defprotocol Effects
+  (lift [effect fn]))
 
 (defprotocol EndoFunctor
   (fmap [v f]))
@@ -28,13 +31,6 @@
 
 (defprotocol Monad
   (flat-map [mval func]))
-
-(defprotocol MonadZero
-  (zero [mval])
-  (plus* [mval mvals]))
-
-(defn plus [mv & mvs]
-  (plus* mv mvs))
 
 (defprotocol Comonad
   (extract [wv])

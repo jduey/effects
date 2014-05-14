@@ -24,6 +24,6 @@
   (flat-map [vs f]
     (vec (mapcat f vs)))
 
-  MonadZero
+  Monoid
   (zero [_] [])
   (plus* [mv mvs] (vec (apply concat mv mvs))))

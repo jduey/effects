@@ -18,11 +18,11 @@
     ;; (string-list [_]
     ;;              (list "<Id> "))
 
-    eff/Effects
-    (ecomp* [effect effects]
+    eff/Monoid
+    (plus* [effect effects]
       (if (empty? effects)
         id
-        (eff/ecomp* (first effects) (rest effects))))
+        (eff/plus* (first effects) (rest effects))))
 
     clojure.lang.IFn
     (invoke [_ v]

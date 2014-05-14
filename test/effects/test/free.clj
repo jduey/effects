@@ -98,14 +98,14 @@
   (fmap [_ _]
     (Done.)))
 
-#_(defn output [x] (liftF (Output. x nil)))
-(defn output [x] (liftFT vector (Output. x :output-next)))
+(defn output [x] (liftF (Output. x nil)))
+#_(defn output [x] (liftFT vector (Output. x :output-next)))
 
-#_(def bell (liftF (Bell. nil)))
-(def bell (liftFT vector (Bell. :bell-next)))
+(def bell (liftF (Bell. nil)))
+#_(def bell (liftFT vector (Bell. :bell-next)))
 
-#_(def done (liftF (Done.)))
-(def done (liftFT vector (Done.)))
+(def done (liftF (Done.)))
+#_(def done (liftFT vector (Done.)))
 
 (defprotocol ShowProg
   (show* [v wrapper]))
@@ -248,26 +248,26 @@
                  (reduce (fn [ev next]
                            (flat-map ev (fn [_] next)))
                          contents))]
-      (liftFT reader (Tag. name attr guts nil)))))
+      (liftFT (Tag. name attr guts nil)))))
 
 (defn insert [k]
-  (FreeT. reader (read-val k)))
+  (FreeT. (read-val k)))
 
-(def html (tag "html"))
-(def head (tag "head"))
-(def body (tag "body"))
-(def h1 (tag "h1"))
-(def p (tag "p"))
-(def title (tag "title"))
+;; (def html (tag "html"))
+;; (def head (tag "head"))
+;; (def body (tag "body"))
+;; (def h1 (tag "h1"))
+;; (def p (tag "p"))
+;; (def title (tag "title"))
 
-(def body (body {}
-                (p {} "this is some text")
-                (p {} (insert :second-para))))
+;; (def body (body {}
+;;                 (p {} "this is some text")
+;;                 (p {} (insert :second-para))))
 
-(def doc (html {}
-               (head {} (title {} (insert :title)))
-               body))
+;; (def doc (html {}
+;;                (head {} (title {} (insert :title)))
+;;                body))
 
-(prn :doc doc)
-(print ((to-html doc) {:title "This is the title"
-                       :second-para "yet more text"}))
+;; (prn :doc doc)
+;; (print ((to-html doc) {:title "This is the title"
+;;                        :second-para "yet more text"}))

@@ -7,7 +7,7 @@
 ; You must not remove this notice, or any other, from this software.
 
 (ns effects.test.maybe
-  (:refer-clojure :exclude [extend])
+  (:refer-clojure :exclude [extend for])
   (:require [clojure.test :refer :all]
             [effects :refer :all]
             [effects.maybe :refer :all]))
@@ -71,7 +71,7 @@
          (maybe 6))))
 
 
-(def mm (ecomp maybe maybe))
+(def mm (plus maybe maybe))
 (defn mm-f [n]
   (mm (inc n)))
 

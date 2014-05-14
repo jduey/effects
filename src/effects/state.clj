@@ -53,7 +53,7 @@
                             ((f v) ss)))))
             (list "<flat-map>")))
 
-  MonadZero
+  Monoid
   (zero [_]
     (State. effect
             (fn [s] (zero (effect :nil)))
@@ -79,11 +79,11 @@
               (fn [s] (list v s))
               (str v)))
 
-    Effects
-    (ecomp* [effect effects]
+    Monoid
+    (plus* [effect effects]
       (let [e (if (empty? effects)
                 id
-                (apply ecomp effects))]
+                (apply plus effects))]
         (reify
           Object
           (toString [_]

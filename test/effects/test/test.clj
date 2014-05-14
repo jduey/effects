@@ -1,10 +1,12 @@
 (ns effects.test.test
   (:refer-clojure :exclude [for extend])
   (:require [effects :refer :all]
+            [effects.maybe :refer :all]
+            [effects.state :refer :all]
             [effects.free :refer :all]
             [effects.vector :refer :all]
             [effects.reader :refer :all])
-  (:import [effects.free Free Pure FreeT Ap]))
+  (:import [effects.free Free Pure FreeT FreeA]))
 
 (deftype Tag [name attr contents]
   Object
@@ -405,7 +407,7 @@
   (perform [pv]
     (extract pv)))
 
-(extend-type Ap
+(extend-type FreeA
   Perform
   (perform [ev]
     ((extract (.h ev)) (perform (.x ev)))))
