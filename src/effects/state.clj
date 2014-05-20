@@ -125,9 +125,9 @@
 (defn get-val
   "Return a state-monad value that assumes the state to be a map and
    returns the value corresponding to the given key. The state is not modified."
-  [key]
+  [key & [default]]
   (flat-map (get-state)
-            #(state (get % key))))
+            #(state (get % key default))))
 
 
 (defn update-val

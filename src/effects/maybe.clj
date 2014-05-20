@@ -7,7 +7,7 @@
 ; You must not remove this notice, or any other, from this software.
 
 (ns effects.maybe
-  (:refer-clojure :exclude [extend])
+  (:refer-clojure :exclude [extend for])
   (:require [effects :refer :all]
             [effects.id :refer [id]]))
 

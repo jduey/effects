@@ -10,32 +10,26 @@
   (:refer-clojure :exclude [extend for seq])
   (:require [effects :refer :all]))
 
-(declare free)
+(declare free-app)
+(declare free-plus)
 
-(declare freeA)
-
-(deftype Pure [v]
+(deftype Pure [v meta]
   Object
   (toString [_]
     (pr-str v))
 
+  clojure.lang.IMeta
+  (meta [_] meta)
+
   EndoFunctor
   (fmap [_ f]
-    (Pure. (f v)))
+    (Pure. (f v) nil))
 
   Applicative
   (wrap [_ v]
-    (Pure. v))
-  (fapply* [_ args]
-    (if (= 1 (count args))
-      (freeA (fmap v #(partial apply %))
-             (fmap (first args) list))
-      (freeA (fmap v #(partial apply %))
-             (apply fapply
-                    (fmap (first args) (fn [arg]
-                                         (fn [& xs]
-                                           (cons arg xs))))
-                    (rest args)))))
+    (Pure. v nil))
+  (fapply* [f args]
+    (free-app f args))
 
   Monad
   (flat-map [_ f]
@@ -44,68 +38,122 @@
   Comonad
   (extract [_] v))
 
-(deftype FreeA [h x]
-  Object
-  (toString [_]
-    (pr-str h x))
+(defn pure [v]
+  (Pure. v nil))
 
-  EndoFunctor
-  (fmap [_ f]
-    (FreeA. (fmap h #(comp f %)) x))
+(deftype FreeZero []
+  Object
+  (toString [_] "")
 
   Applicative
   (wrap [_ v]
-    (Pure. v))
-  (fapply* [_ [y]]
-    (FreeA. (fmap h #(partial apply %))
-            (FreeA. (fmap x #(partial cons %))
-                    (fmap y list))))
+    (pure v))
 
   Monoid
-  (zero [_]
-    )
+  (zero [fz] fz)
+  (plus* [_ evs] evs))
+
+(def free-zero (FreeZero.))
+
+(deftype FreeA [f args meta]
+  Object
+  (toString [_]
+    (pr-str f args))
+
+  clojure.lang.IFn
+  (invoke [fa]
+    (prn :f (extract f))
+    (prn :args args)
+    (apply (extract f) args))
+
+  clojure.lang.IObj
+  (withMeta [_ m] (FreeA. f args m))
+
+  clojure.lang.IMeta
+  (meta [_] meta)
+
+  EndoFunctor
+  (fmap [_ pure-f]
+    (free-app (fmap f #(comp pure-f %)) args))
+
+  Applicative
+  (wrap [_ v]
+    (pure v))
+  (fapply* [f args]
+    (free-app f args))
+
+  Monoid
+  (zero [_] free-zero)
   (plus* [v vs]
-    ))
+    (free-plus (cons v vs))))
 
-(defn freeA [f x]
-  (FreeA. f x))
+(defn free-app [f x]
+  (FreeA. f x nil))
 
-(deftype Free [v]
+(deftype FreePlus [alts meta]
+  Object
+  (toString [_]
+    (pr-str alts))
+
+  clojure.lang.IObj
+  (withMeta [_ m] (FreePlus. alts m))
+
+  clojure.lang.IMeta
+  (meta [_] meta)
+
+  EndoFunctor
+  (fmap [_ pure-f]
+    (free-plus (map #(fmap % pure-f) alts)))
+
+  Applicative
+  (wrap [_ v]
+    (pure v))
+  (fapply* [f args]
+    (free-app f args))
+
+  Monoid
+  (zero [_] free-zero)
+  (plus* [v vs]
+    (free-plus (cons v vs))))
+
+(defn free-plus [alts]
+  (FreePlus. alts nil))
+
+(deftype Free [v meta]
   Object
   (toString [_]
     (pr-str v))
 
+  clojure.lang.IMeta
+  (meta [_] meta)
+
   EndoFunctor
   (fmap [_ f]
-    (Free. (fmap v f)))
+    (Free. (fmap v f) nil))
 
   Applicative
   (wrap [_ new-v]
-    (Free. new-v))
-  (fapply* [_ args]
-    (if (= 1 (count args))
-      (freeA (fmap v #(partial apply %))
-             (fmap (first args) list))
-      (freeA (fmap v #(partial apply %))
-             (apply fapply
-                    (fmap (extract (first args))
-                          (fn [arg]
-                            (fn [& xs]
-                              (cons arg xs))))
-                    (rest args)))))
+    (Free. new-v nil))
+  (fapply* [f args]
+    (free-app f args))
 
   Monad
   (flat-map [_ f]
-    (Free. (fmap v #(flat-map % f))))
+    (Free. (fmap v #(flat-map % f)) nil))
+
+  Monoid
+  (zero [_] free-zero)
+  (plus* [v vs]
+    (free-plus (cons v vs)))
 
   Comonad
   (extract [_] v))
 
 (defn free [v]
-  (Free. v))
+  (Free. v nil))
 
 (defn liftF [f-val]
-  (Free. (fmap f-val (fn [x] (Pure. x)))))
+  (free (fmap f-val (fn [x] (pure x)))))
 
 
 (deftype FreeT [mv]
@@ -135,4 +183,4 @@
   (extract [_] mv))
 
 (defn liftFT [f-val]
-  (FreeT. (fmap f-val (fn [x] (Pure. (wrap f-val x))))))
+  (FreeT. (fmap f-val (fn [x] (pure (wrap f-val x))))))

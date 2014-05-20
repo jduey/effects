@@ -410,7 +410,8 @@
 (extend-type FreeA
   Perform
   (perform [ev]
-    ((extract (.h ev)) (perform (.x ev)))))
+    (let [args (map perform (.args ev))]
+      (fmap (extract (.f ev)) #(apply % args)))))
 
 (extend-type Free
   Perform
