@@ -15,6 +15,8 @@
   Applicative
   (wrap [_ v]
     [v])
+  (fapply* [f args]
+    (flat-map f #(comprehend % args)))
 
   EndoFunctor
   (fmap [vct f]

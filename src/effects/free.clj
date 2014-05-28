@@ -55,26 +55,26 @@
 
 (def free-zero (FreeZero.))
 
-(deftype FreeA [f args meta]
+(deftype FreeA [f arg meta]
   Object
   (toString [_]
-    (pr-str f args))
+    (pr-str f arg))
 
   clojure.lang.IObj
-  (withMeta [_ m] (FreeA. f args m))
+  (withMeta [_ m] (FreeA. f arg m))
 
   clojure.lang.IMeta
   (meta [_] meta)
 
   EndoFunctor
   (fmap [_ pure-f]
-    (free-app (fmap f #(comp pure-f %)) args))
+    (free-app (fmap f #(comp pure-f %)) arg))
 
   Applicative
   (wrap [_ v]
     (pure v))
-  (fapply* [f args]
-    (free-app f args))
+  (fapply* [f arg]
+    (free-app f arg))
 
   Monoid
   (zero [_] free-zero)
@@ -83,7 +83,18 @@
 
   Comonad
   (extract [_]
-    (apply (extract f) (map extract args))))
+    (cond
+     (and (= (type f) Pure) (= (type arg) Pure))
+     ((extract f) (extract arg))
+
+    (= (type f) Pure)
+    (apply fapply (extract f) (map extract arg))
+
+    (= (type arg) Pure)
+    (fmap (extract f) #(% (extract arg)))
+
+    :else
+    (fapply* (extract f) (map extract arg)))))
 
 (defn free-app [f x]
   (FreeA. f x nil))
@@ -131,7 +142,7 @@
 
   Applicative
   (wrap [_ new-v]
-    (Free. new-v nil))
+    (pure new-v))
   (fapply* [f args]
     (free-app f args))
 
