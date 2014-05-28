@@ -60,12 +60,6 @@
   (toString [_]
     (pr-str f args))
 
-  clojure.lang.IFn
-  (invoke [fa]
-    (prn :f (extract f))
-    (prn :args args)
-    (apply (extract f) args))
-
   clojure.lang.IObj
   (withMeta [_ m] (FreeA. f args m))
 
@@ -85,7 +79,11 @@
   Monoid
   (zero [_] free-zero)
   (plus* [v vs]
-    (free-plus (cons v vs))))
+    (free-plus (cons v vs)))
+
+  Comonad
+  (extract [_]
+    (apply (extract f) (map extract args))))
 
 (defn free-app [f x]
   (FreeA. f x nil))

@@ -160,4 +160,5 @@
   (second ((gen-ebnf parser) {})))
 
 #_(doall (map (fn [[k v]] (println k " := " v)) (ebnf form)))
-(println ((gen-ebnf (all (is-term "a") (is-term "b")))))
+(println (extract (all (is-term "a") (plus (is-term "b")
+                                           (is-term "c")))))

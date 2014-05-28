@@ -153,7 +153,7 @@
 (defn pretty [x] (print (show x)))
 
 (defn return [x]
-  (Pure. x))
+  (Pure. x nil))
 
 #_(extend-type Object
   e/EndoFunctor
@@ -244,7 +244,7 @@
 (defn tag [name]
   (fn [attr & contents]
     (let [guts (if (empty? contents)
-                 (Pure. nil)
+                 (Pure. nil nil)
                  (reduce (fn [ev next]
                            (flat-map ev (fn [_] next)))
                          contents))]

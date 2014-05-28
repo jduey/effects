@@ -111,7 +111,7 @@
                              (flat-map ev (fn [_] next)))
                            contents)]
       (Free. (fmap (Tag. name attr contents nil)
-                   (fn [x] (Pure. x)))))))
+                   (fn [x] (Pure. x nil)))))))
 
 (def html (tag "html"))
 (def head (tag "head"))
@@ -169,8 +169,8 @@
                            contents)
           contents (if (= Free (type contents))
                      contents
-                     (Free. (Pure. contents)))]
-      (Free. (Tag. name attr contents (Pure. nil))))))
+                     (Free. (Pure. contents nil)))]
+      (Free. (Tag. name attr contents (Pure. nil nil))))))
 
 (extend-type Tag
   XML
@@ -232,8 +232,8 @@
                            contents)
           contents (if (= FreeT (type contents))
                      contents
-                     (Pure. (vector contents)))]
-      (FreeT. (vector (Tag. name attr contents (Pure. (vector nil))))))))
+                     (Pure. (vector contents) nil))]
+      (FreeT. (vector (Tag. name attr contents (Pure. (vector nil) nil)))))))
 
 (def html (multi-tag "html"))
 (def head (multi-tag "head"))
@@ -263,8 +263,8 @@
                            contents)
           contents (if (= FreeT (type contents))
                      contents
-                     (Pure. (reader contents)))]
-      (FreeT. (reader (Tag. name attr contents (Pure. (reader nil))))))))
+                     (Pure. (reader contents) nil))]
+      (FreeT. (reader (Tag. name attr contents (Pure. (reader nil) nil)))))))
 
 (def html (template-tag "html"))
 (def head (template-tag "head"))
@@ -285,7 +285,7 @@
 ;; (println)
 
 (defn insert [k]
-  (FreeT. (fmap (read-val k) #(Pure. (reader %)))))
+  (FreeT. (fmap (read-val k) #(Pure. (reader %) nil))))
 
 (def page (html {}
                 (head {}
@@ -366,7 +366,7 @@
 ;;                            (flat-map ev (fn [_] next)))
 ;;                          contents)]
 ;;     (FreeT. (reader (fmap (P. attr contents nil)
-;;                           (fn [x] (Pure. x)))))))
+;;                           (fn [x] (Pure. x nil)))))))
 
 ;; (def page (html {}
 ;;                 (head {}
@@ -424,17 +424,17 @@
 #_(prn (perform b))
 
 (println)
-(def b (fapply (Pure. inc) (Pure. 9)))
+(def b (fapply (Pure. inc nil) (Pure. 9 nil)))
 (prn b)
 (prn (perform b))
 
 (println)
-(def b (fapply (Endo. +) (Pure. 9) (Pure. 5)))
+(def b (fapply (Endo. +) (Pure. 9 nil) (Pure. 5 nil)))
 (prn b)
 (prn (perform b))
 
 (println)
-(def b (fapply (Endo. +) (Pure. 9) (Pure. 5) (Pure. 100)))
+(def b (fapply (Endo. +) (Pure. 9 nil) (Pure. 5 nil) (Pure. 100 nil)))
 (prn b)
 (prn (perform b))
 
@@ -449,6 +449,6 @@
 (prn (perform b))
 
 (println)
-(def b (fapply (Endo. +) (Free. (Endo. 100)) (Pure. 8) (Free. (Endo. 7))))
+(def b (fapply (Endo. +) (Free. (Endo. 100)) (Pure. 8 nil) (Free. (Endo. 7))))
 (prn b)
 (prn (perform b))
