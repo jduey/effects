@@ -9,7 +9,7 @@
 (ns effects.test.free
   (:refer-clojure :exclude [extend for])
   (:require [clojure.test :refer :all]
-            [effects :as e :refer [flat-map zero plus extract wrap for fmap]]
+            [effects :refer :all]
             [effects.free :refer :all]
             [effects.reader :refer :all]
             [effects.vector :refer :all])
@@ -71,203 +71,71 @@
   (toString [_]
     (pr-str b next))
 
-  e/EndoFunctor
+  EndoFunctor
   (fmap [_ f]
     (Output. b (f next)))
 
-  e/Comonad
-  (extract [_] [b next]))
+  Comonad
+  (extract [_]
+    [b next]))
 
 (deftype Bell [next]
   Object
   (toString [_]
     (pr-str next))
 
-  e/EndoFunctor
+  EndoFunctor
   (fmap [_ f]
     (Bell. (f next)))
 
-  e/Comonad
+  Comonad
   (extract [_] next))
 
 (deftype Done []
   Object
-  (toString [_] "")
+  (toString [_]
+    "")
 
-  e/EndoFunctor
+  EndoFunctor
   (fmap [_ _]
-    (Done.)))
+        (Done.)))
 
 (defn output [x] (liftF (Output. x nil)))
-#_(defn output [x] (liftFT vector (Output. x :output-next)))
-
 (def bell (liftF (Bell. nil)))
-#_(def bell (liftFT vector (Bell. :bell-next)))
-
 (def done (liftF (Done.)))
-#_(def done (liftFT vector (Done.)))
+
+(prn (flat-map bell (fn [_] done)))
 
 (defprotocol ShowProg
-  (show* [v wrapper]))
-
-(defn show [v]
-  (show* v identity))
+  (show [_]))
 
 (extend-type Output
   ShowProg
-  (show* [ev wrapper]
+  (show [ev]
     (let [[v x] (extract ev)]
-      (flat-map (show* x wrapper)
-                (fn [s]
-                  (wrapper (str "output " v \newline s)))))))
+      (str "output " v \newline (evaluate x identity show)))))
 
 (extend-type Bell
   ShowProg
-  (show* [ev wrapper]
-    (flat-map (show* (extract ev) wrapper)
-              (fn [s]
-                (wrapper (str "bell" \newline s))))))
+  (show [ev]
+    (let [x (extract ev)]
+      (str "bell" \newline (evaluate x identity show)))))
 
 (extend-type Done
   ShowProg
-  (show* [ev wrapper]
-    (wrapper (str "done" \newline))))
-
-(extend-type Free
-  ShowProg
-  (show* [ev _]
-    (let [v (extract ev)]
-      (show* v identity))))
-
-(extend-type FreeT
-  ShowProg
-  (show* [ev _]
-    (let [v (extract ev)]
-      (flat-map v #(show* % (partial wrap v))))))
-
-(extend-type Pure
-  ShowProg
-  (show* [ev wrapper]
-    (wrapper (str "return " (extract ev) \newline))))
-
-(defn pretty [x] (print (show x)))
-
-(defn return [x]
-  (Pure. x nil))
-
-#_(extend-type Object
-  e/EndoFunctor
-  (fmap [v f]
-    (f v))
-
-  e/Monad
-  (flat-map [v f]
-    (extract (f v))))
+  (show [ev]
+        (str "done" \newline)))
 
 
-#_(def subr (for [_ (plus (output :a)
-                        (output :b))]
-            8))
 
-#_(def subr (for [_ (output (output :a))
+(def subr (for [_ (output :a)
                 _ (output :b)]
-            8))
+            (pure nil)))
 
-#_(prn :subr subr)
-
-#_(def prog (for [v subr
+(def prog (for [v subr
                 _ bell
-                _ (output v)
                 _ done]
-            :bogus))
+            nil))
 
-#_(prn :prog prog)
-#_(println)
-
-#_(prn (show prog))
-#_(pretty prog)
-
-
-(deftype Tag [tag attr contents next]
-  Object
-  (toString [_]
-    (pr-str tag attr contents next))
-
-  e/EndoFunctor
-  (fmap [_ f]
-    (Tag. tag attr contents (f next)))
-
-  e/Comonad
-  (extract [_] tag))
-
-(defprotocol HTML
-  (html* [v wrapper]))
-
-(defn to-html [v]
-  (html* v identity))
-
-(extend-type java.lang.String
-  HTML
-  (html* [ev wrapper]
-    (wrapper ev)))
-
-(extend-type Tag
-  HTML
-  (html* [ev wrapper]
-    (for [contents (html* (.contents ev) wrapper)
-          next (html* (.next ev) wrapper)]
-      (let [next (if (= next "")
-                   ""
-                   (str \newline next))]
-        (str "<" (.tag ev) ">\n"
-             contents
-             "\n</" (.tag ev) ">"
-             next)))))
-
-(extend-type Pure
-  HTML
-  (html* [ev wrapper]
-    (wrapper "")))
-
-#_(extend-type Free
-  HTML
-  (html* [ev]
-    (let [v (extract ev)]
-      (html* v))))
-
-(extend-type FreeT
-  HTML
-  (html* [ev _]
-    (let [v (extract ev)]
-      (flat-map v #(html* % (partial wrap v))))))
-
-(defn tag [name]
-  (fn [attr & contents]
-    (let [guts (if (empty? contents)
-                 (Pure. nil nil)
-                 (reduce (fn [ev next]
-                           (flat-map ev (fn [_] next)))
-                         contents))]
-      (liftFT (Tag. name attr guts nil)))))
-
-(defn insert [k]
-  (FreeT. (read-val k)))
-
-;; (def html (tag "html"))
-;; (def head (tag "head"))
-;; (def body (tag "body"))
-;; (def h1 (tag "h1"))
-;; (def p (tag "p"))
-;; (def title (tag "title"))
-
-;; (def body (body {}
-;;                 (p {} "this is some text")
-;;                 (p {} (insert :second-para))))
-
-;; (def doc (html {}
-;;                (head {} (title {} (insert :title)))
-;;                body))
-
-;; (prn :doc doc)
-;; (print ((to-html doc) {:title "This is the title"
-;;                        :second-para "yet more text"}))
+(prn :prog prog)
+(print (evaluate prog identity show))
