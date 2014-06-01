@@ -187,6 +187,47 @@
 (println (eval-xml page))
 (println)
 
+(defprotocol XML
+  (xml [v]))
+
+(deftype Tag [name attr contents next]
+  EndoFunctor
+  (fmap [t f]
+    (Tag. (.name t) (.attr t) (.contents t) (f (.next t))))
+
+  XML
+  (xml [t]
+    (let [contents (evaluate (.contents t) str xml)
+          next (evaluate (.next t) str xml)]
+      (str "<" (.name t) ">\n" contents "\n</" (.name t) ">"
+           (str \newline next)))))
+
+(defn tag [name]
+  (fn [attr & contents]
+    (let [contents (reduce (fn [ev next]
+                             (flat-map ev (fn [_] next)))
+                           contents)
+          contents (if (= Free (type contents))
+                     contents
+                     (pure contents))]
+      (free (Tag. name attr contents (pure nil))))))
+
+(def html (tag "html"))
+(def head (tag "head"))
+(def title (tag "title"))
+(def body (tag "body"))
+(def p (tag "p"))
+
+(def page (html {}
+                (head {}
+                      (title {} "This Is The Title"))
+                (body {}
+                      (p {} "first paragraph")
+                      (p {} "second paragraph")
+                      (p {} "third paragraph"))))
+
+(print (evaluate page str xml))
+
 ;; (extend-type Tag
 ;;   XML
 ;;   (xml [t]

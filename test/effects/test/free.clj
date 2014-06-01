@@ -127,15 +127,13 @@
         (str "done" \newline)))
 
 
-
 (def subr (for [_ (output :a)
                 _ (output :b)]
-            (pure nil)))
+            8))
 
 (def prog (for [v subr
                 _ bell
                 _ done]
             nil))
 
-(prn :prog prog)
 (print (evaluate prog identity show))
