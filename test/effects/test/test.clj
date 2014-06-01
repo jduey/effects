@@ -111,7 +111,8 @@
                              (flat-map ev (fn [_] next)))
                            contents)]
       (Free. (fmap (Tag. name attr contents nil)
-                   (fn [x] (Pure. x nil)))))))
+                   (fn [x] (Pure. x nil)))
+             nil))))
 
 (def html (tag "html"))
 (def head (tag "head"))
@@ -140,12 +141,12 @@
 (extend-type Pure
   XML
   (xml [ev]
-    (str (extract ev))))
+    (str (.v ev))))
 
 (extend-type Free
   XML
   (xml [ev]
-    (xml (extract ev))))
+    (xml (.v ev))))
 
 (println (xml page))
 (println)
@@ -169,8 +170,8 @@
                            contents)
           contents (if (= Free (type contents))
                      contents
-                     (Free. (Pure. contents nil)))]
-      (Free. (Tag. name attr contents (Pure. nil nil))))))
+                     (Pure. contents nil))]
+      (Free. (Tag. name attr contents (Pure. nil nil)) nil))))
 
 (extend-type Tag
   XML
@@ -183,12 +184,12 @@
 (extend-type Pure
   XML
   (xml [ev]
-    (str (extract ev))))
+    (str (.v ev))))
 
 (extend-type Free
   XML
   (xml [ev]
-    (xml (extract ev))))
+    (xml (.v ev))))
 
 (def html (tag "html"))
 (def head (tag "head"))
@@ -218,12 +219,12 @@
 (extend-type Pure
   XML
   (xml [ev]
-    (fmap (extract ev) str)))
+    (fmap (.v ev) str)))
 
 (extend-type FreeT
   XML
   (xml [ev]
-    (flat-map (extract ev) xml)))
+    (flat-map (.mv ev) xml)))
 
 (defn multi-tag [name]
   (fn [attr & contents]
@@ -381,74 +382,3 @@
 ;; (println (format-xml {:title "This Is The Title"
 ;;                       :second-para "second paragraph"}))
 ;; (println)
-
-
-;; *********************
-;; Free Applicative
-
-(defprotocol Perform
-  (perform [_]))
-
-(deftype Endo [x]
-  Object
-  (toString [_] (pr-str x))
-
-  EndoFunctor
-  (fmap [_ f] (Endo. (f x)))
-
-  Perform
-  (perform [_] x)
-
-  Comonad
-  (extract [_] x))
-
-(extend-type Pure
-  Perform
-  (perform [pv]
-    (extract pv)))
-
-(extend-type FreeA
-  Perform
-  (perform [ev]
-    (let [args (map perform (.args ev))]
-      (fmap (extract (.f ev)) #(apply % args)))))
-
-(extend-type Free
-  Perform
-  (perform [f]
-    (perform (extract f))))
-
-(println)
-(def b (fmap (Free. (Endo. :bogus)) vector))
-(prn b)
-#_(prn (perform b))
-
-(println)
-(def b (fapply (Pure. inc nil) (Pure. 9 nil)))
-(prn b)
-(prn (perform b))
-
-(println)
-(def b (fapply (Endo. +) (Pure. 9 nil) (Pure. 5 nil)))
-(prn b)
-(prn (perform b))
-
-(println)
-(def b (fapply (Endo. +) (Pure. 9 nil) (Pure. 5 nil) (Pure. 100 nil)))
-(prn b)
-(prn (perform b))
-
-(println)
-(def b (fapply (Endo. inc) (Free. (Endo. 8))))
-(prn b)
-(prn (perform b))
-
-(println)
-(def b (fapply (Endo. +) (Free. (Endo. 100)) (Free. (Endo. 8)) (Free. (Endo. 7))))
-(prn b)
-(prn (perform b))
-
-(println)
-(def b (fapply (Endo. +) (Free. (Endo. 100)) (Pure. 8 nil) (Free. (Endo. 7))))
-(prn b)
-(prn (perform b))
