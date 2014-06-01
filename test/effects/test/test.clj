@@ -112,7 +112,7 @@
                            contents)]
       (Free. (fmap (Tag. name attr contents nil)
                    (fn [x] (Pure. x nil)))
-             nil))))
+             {}))))
 
 (def html (tag "html"))
 (def head (tag "head"))
@@ -138,21 +138,8 @@
              ""
              (str \newline next))))))
 
-(extend-type Pure
-  XML
-  (xml [ev]
-    (str (.v ev))))
-
-(extend-type Free
-  XML
-  (xml [ev]
-    (xml (.v ev))))
-
-(println (xml page))
-(println)
-
-(defprotocol XML
-  (xml [v]))
+;; (println (eval-xml page))
+;; (println)
 
 (deftype Tag [name attr contents next]
   Object
@@ -170,26 +157,18 @@
                            contents)
           contents (if (= Free (type contents))
                      contents
-                     (Pure. contents nil))]
-      (Free. (Tag. name attr contents (Pure. nil nil)) nil))))
+                     (pure contents))]
+      (free (Tag. name attr contents (Pure. nil nil))))))
+
+(def eval-xml #(evaluate % identity xml))
 
 (extend-type Tag
   XML
   (xml [t]
-    (let [contents (xml (.contents t))
-          next (xml (.next t))]
+    (let [contents (eval-xml (.contents t))
+          next (eval-xml (.next t))]
       (str "<" (.name t) ">\n" contents "\n</" (.name t) ">"
            (str \newline next)))))
-
-(extend-type Pure
-  XML
-  (xml [ev]
-    (str (.v ev))))
-
-(extend-type Free
-  XML
-  (xml [ev]
-    (xml (.v ev))))
 
 (def html (tag "html"))
 (def head (tag "head"))
@@ -205,104 +184,95 @@
                       (p {} "second paragraph")
                       (p {} "third paragraph"))))
 
-(println (xml page))
+(println (eval-xml page))
 (println)
 
-(extend-type Tag
-  XML
-  (xml [t]
-    (for [contents (xml (.contents t))
-          next (xml (.next t))]
-      (str "<" (.name t) ">\n" contents "\n</" (.name t) ">"
-           (str \newline next)))))
-
-(extend-type Pure
-  XML
-  (xml [ev]
-    (fmap (.v ev) str)))
-
-(extend-type FreeT
-  XML
-  (xml [ev]
-    (flat-map (.mv ev) xml)))
-
-(defn multi-tag [name]
-  (fn [attr & contents]
-    (let [contents (reduce (fn [ev next]
-                             (flat-map ev (fn [_] next)))
-                           contents)
-          contents (if (= FreeT (type contents))
-                     contents
-                     (Pure. (vector contents) nil))]
-      (FreeT. (vector (Tag. name attr contents (Pure. (vector nil) nil)))))))
-
-(def html (multi-tag "html"))
-(def head (multi-tag "head"))
-(def title (multi-tag "title"))
-(def body (multi-tag "body"))
-(def p (multi-tag "p"))
-
-(defn alt [& alternatives]
-  (FreeT. (vec alternatives)))
-
-(def page (html {}
-                (head {}
-                      (alt (title {} "This Is The Title")
-                           (title {} "Alternate Title")))
-                (body {}
-                      (p {} "first paragraph")
-                      (p {} "second paragraph")
-                      (p {} "third paragraph"))))
-
-(prn (xml page))
-(println)
-
-(defn template-tag [name]
-  (fn [attr & contents]
-    (let [contents (reduce (fn [ev next]
-                             (flat-map ev (fn [_] next)))
-                           contents)
-          contents (if (= FreeT (type contents))
-                     contents
-                     (Pure. (reader contents) nil))]
-      (FreeT. (reader (Tag. name attr contents (Pure. (reader nil) nil)))))))
-
-(def html (template-tag "html"))
-(def head (template-tag "head"))
-(def title (template-tag "title"))
-(def body (template-tag "body"))
-(def p (template-tag "p"))
-
-(def page (html {}
-                (head {}
-                      (title {} "This Is The Title"))
-                (body {}
-                      (p {} "first paragraph")
-                      (p {} "second paragraph")
-                      (p {} "third paragraph"))))
+;; (extend-type Tag
+;;   XML
+;;   (xml [t]
+;;     (for [contents (xml (.contents t))
+;;           next (xml (.next t))]
+;;       (str "<" (.name t) ">\n" contents "\n</" (.name t) ">"
+;;            (str \newline next)))))
 
 
-;; (println ((xml page) :environment))
+;; (defn multi-tag [name]
+;;   (fn [attr & contents]
+;;     (let [contents (reduce (fn [ev next]
+;;                              (flat-map ev (fn [_] next)))
+;;                            contents)
+;;           contents (if (= FreeT (type contents))
+;;                      contents
+;;                      (Pure. (vector contents) nil))]
+;;       (FreeT. (vector (Tag. name attr contents (Pure. (vector nil) nil)))))))
+
+;; (def html (multi-tag "html"))
+;; (def head (multi-tag "head"))
+;; (def title (multi-tag "title"))
+;; (def body (multi-tag "body"))
+;; (def p (multi-tag "p"))
+
+;; (defn alt [& alternatives]
+;;   (FreeT. (vec alternatives)))
+
+;; (def page (html {}
+;;                 (head {}
+;;                       (alt (title {} "This Is The Title")
+;;                            (title {} "Alternate Title")))
+;;                 (body {}
+;;                       (p {} "first paragraph")
+;;                       (p {} "second paragraph")
+;;                       (p {} "third paragraph"))))
+
+;; (prn (xml page))
 ;; (println)
 
-(defn insert [k]
-  (FreeT. (fmap (read-val k) #(Pure. (reader %) nil))))
+;; (defn template-tag [name]
+;;   (fn [attr & contents]
+;;     (let [contents (reduce (fn [ev next]
+;;                              (flat-map ev (fn [_] next)))
+;;                            contents)
+;;           contents (if (= FreeT (type contents))
+;;                      contents
+;;                      (Pure. (reader contents) nil))]
+;;       (FreeT. (reader (Tag. name attr contents (Pure. (reader nil) nil)))))))
 
-(def page (html {}
-                (head {}
-                      (title {} (insert :title)))
-                (body {}
-                      (p {} "first paragraph")
-                      (p {} (insert :second-para))
-                      (p {} "third paragraph"))))
+;; (def html (template-tag "html"))
+;; (def head (template-tag "head"))
+;; (def title (template-tag "title"))
+;; (def body (template-tag "body"))
+;; (def p (template-tag "p"))
 
-(println ((xml page) {:title "This Is The Title"
-                      :second-para "second paragraph"}))
-(println)
+;; (def page (html {}
+;;                 (head {}
+;;                       (title {} "This Is The Title"))
+;;                 (body {}
+;;                       (p {} "first paragraph")
+;;                       (p {} "second paragraph")
+;;                       (p {} "third paragraph"))))
 
-(println ((xml page) {:title "Another Title"
-                      :second-para "a better paragraph"}))
-(println)
+
+;; ;; (println ((xml page) :environment))
+;; ;; (println)
+
+;; (defn insert [k]
+;;   (FreeT. (fmap (read-val k) #(Pure. (reader %) nil))))
+
+;; (def page (html {}
+;;                 (head {}
+;;                       (title {} (insert :title)))
+;;                 (body {}
+;;                       (p {} "first paragraph")
+;;                       (p {} (insert :second-para))
+;;                       (p {} "third paragraph"))))
+
+;; (println ((xml page) {:title "This Is The Title"
+;;                       :second-para "second paragraph"}))
+;; (println)
+
+;; (println ((xml page) {:title "Another Title"
+;;                       :second-para "a better paragraph"}))
+;; (println)
 
 ;; ;; *****************
 ;; ;; Formatted XML
