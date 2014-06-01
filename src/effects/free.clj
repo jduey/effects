@@ -13,6 +13,9 @@
 (declare free-app)
 (declare free-plus)
 
+(defprotocol FreeProto
+  (evaluate [_ pure lift]))
+
 (deftype Pure [v meta]
   Object
   (toString [_]
@@ -21,8 +24,13 @@
   clojure.lang.IMeta
   (meta [_] meta)
 
+  FreeProto
+  (evaluate [_ pure _]
+    (pure v))
+
   EndoFunctor
   (fmap [_ f]
+    (prn :pure v f)
     (Pure. (f v) nil))
 
   Applicative
@@ -33,10 +41,7 @@
 
   Monad
   (flat-map [_ f]
-    (f v))
-
-  Comonad
-  (extract [_] v))
+    (f v)))
 
 (defn pure [v]
   (Pure. v nil))
@@ -55,46 +60,35 @@
 
 (def free-zero (FreeZero.))
 
-(deftype FreeA [f arg meta]
+(deftype FreeA [f args meta]
   Object
   (toString [_]
-    (pr-str f arg))
+    (pr-str f args))
 
   clojure.lang.IObj
-  (withMeta [_ m] (FreeA. f arg m))
+  (withMeta [_ m] (FreeA. f args m))
 
   clojure.lang.IMeta
   (meta [_] meta)
 
+  FreeProto
+  (evaluate [_ pure lift]
+    (fapply* (evaluate f pure lift) (map #(evaluate % pure lift) args)))
+
   EndoFunctor
   (fmap [_ pure-f]
-    (free-app (fmap f #(comp pure-f %)) arg))
+    (FreeA. (fmap f #(comp pure-f %)) args nil))
 
   Applicative
   (wrap [_ v]
     (pure v))
-  (fapply* [f arg]
-    (free-app f arg))
+  (fapply* [f args]
+    (FreeA. f args nil))
 
   Monoid
   (zero [_] free-zero)
   (plus* [v vs]
-    (free-plus (cons v vs)))
-
-  Comonad
-  (extract [_]
-    (cond
-     (and (= (type f) Pure) (= (type arg) Pure))
-     ((extract f) (extract arg))
-
-    (= (type f) Pure)
-    (apply fapply (extract f) (map extract arg))
-
-    (= (type arg) Pure)
-    (fmap (extract f) #(% (extract arg)))
-
-    :else
-    (fapply* (extract f) (map extract arg)))))
+    (free-plus (cons v vs))))
 
 (defn free-app [f x]
   (FreeA. f x nil))
@@ -136,13 +130,17 @@
   clojure.lang.IMeta
   (meta [_] meta)
 
+  FreeProto
+  (evaluate [_ _ lift]
+    (lift v))
+
   EndoFunctor
   (fmap [_ f]
     (Free. (fmap v f) nil))
 
   Applicative
   (wrap [_ new-v]
-    (pure new-v))
+    (Free. (fmap v (constantly new-v)) nil))
   (fapply* [f args]
     (free-app f args))
 
@@ -153,10 +151,7 @@
   Monoid
   (zero [_] free-zero)
   (plus* [v vs]
-    (free-plus (cons v vs)))
-
-  Comonad
-  (extract [_] v))
+    (free-plus (cons v vs))))
 
 (defn free [v]
   (Free. v nil))
@@ -185,11 +180,8 @@
     (FreeT. (zero (wrap mv :nil))))
   (plus* [mv mvs]
     (FreeT. (->> (cons mv mvs)
-                 (map extract)
-                 (apply plus))))
-
-  Comonad
-  (extract [_] mv))
+                 #_(map extract)
+                 (apply plus)))))
 
 (defn liftFT [f-val]
   (FreeT. (fmap f-val (fn [x] (pure (wrap f-val x))))))

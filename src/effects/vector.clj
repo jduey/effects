@@ -12,15 +12,15 @@
             [effects.id :refer [id]]))
 
 (extend-type clojure.lang.PersistentVector
+  EndoFunctor
+  (fmap [vct f]
+    (vec (map f vct)))
+
   Applicative
   (wrap [_ v]
     [v])
   (fapply* [f args]
     (flat-map f #(comprehend % args)))
-
-  EndoFunctor
-  (fmap [vct f]
-    (vec (map f vct)))
 
   Monad
   (flat-map [vs f]
