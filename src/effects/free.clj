@@ -140,7 +140,7 @@
 
   Applicative
   (wrap [_ new-v]
-    (Free. (fmap v (constantly new-v)) nil))
+    (Pure. new-v nil))
   (fapply* [f args]
     (free-app f args))
 
