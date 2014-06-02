@@ -14,7 +14,7 @@
 (declare free-plus)
 
 (defprotocol FreeProto
-  (evaluate [_ pure lift]))
+  (evaluate [_ eval-pure eval-endo]))
 
 (deftype Pure [v meta]
   Object
@@ -25,12 +25,11 @@
   (meta [_] meta)
 
   FreeProto
-  (evaluate [_ pure _]
-    (pure v))
+  (evaluate [_ eval-pure _]
+    (eval-pure v))
 
   EndoFunctor
   (fmap [_ f]
-    (prn :pure v f)
     (Pure. (f v) nil))
 
   Applicative
@@ -72,8 +71,9 @@
   (meta [_] meta)
 
   FreeProto
-  (evaluate [_ pure lift]
-    (fapply* (evaluate f pure lift) (map #(evaluate % pure lift) args)))
+  (evaluate [_ eval-pure eval-endo]
+    (fapply* (evaluate f eval-pure eval-endo)
+             (map #(evaluate % eval-pure eval-endo) args)))
 
   EndoFunctor
   (fmap [_ pure-f]
@@ -131,8 +131,8 @@
   (meta [_] meta)
 
   FreeProto
-  (evaluate [_ _ lift]
-    (lift v))
+  (evaluate [_ _ eval-endo]
+    (eval-endo v))
 
   EndoFunctor
   (fmap [_ f]
