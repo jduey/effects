@@ -104,6 +104,10 @@
   clojure.lang.IMeta
   (meta [_] meta)
 
+  FreeProto
+  (evaluate [_ eval-pure eval-endo]
+    (apply plus (map #(evaluate % eval-pure eval-endo) alts)))
+
   EndoFunctor
   (fmap [_ pure-f]
     (free-plus (map #(fmap % pure-f) alts)))

@@ -2,163 +2,111 @@
   (:refer-clojure :exclude [for seq extend])
   (:require [effects :refer :all]
             [effects.free :refer :all]
+            [effects.maybe :refer :all]
             [effects.state :refer :all])
   (:import [effects.free Pure Free FreeA FreePlus FreeZero]))
 
-(defn term [pred]
-  (free pred))
+(def parser (plus state maybe))
+(defn parser-set-val [k v]
+  (->State maybe
+           (fn [s] (maybe (list v (assoc s k v))))
+           (pr-str "parser-set-val" k v)))
 
-(defn all [& parsers]
-  (fapply* (pure list) parsers))
-
-(def one-of plus)
-
-(defn optional [parser]
-  (plus parser (zero parser)))
-
-(deftype OneOrMore [parser meta]
-  Object
-  (toString [_]
-    (pr-str parser))
-
-  clojure.lang.IObj
-  (withMeta [_ m] (OneOrMore. parser m))
-
-  clojure.lang.IMeta
-  (meta [_] meta)
+(deftype EBNF [x]
+  Applicative
+  (fapply* [_ args]
+    (EBNF. (fapply* (parser (fn [& args]
+                              (apply str (interpose " , " args))))
+                    (map #(.x %) args))))
 
   Monoid
-  (zero [_] free-zero)
-  (plus* [p ps]
-    (free-plus (cons p ps))))
+  (plus* [v vs]
+    (EBNF. (fapply* (parser (fn [& args]
+                              (apply str (interpose " | " args))))
+                    (map #(.x %) (cons v vs))))))
 
-(defn one-or-more [parser]
-  (OneOrMore. parser nil))
+(defn term [v]
+  (pure v))
 
-(defn none-or-more [parser]
-  (optional (one-or-more parser)))
+(defn pure-ebnf [v]
+  (EBNF. (parser (condp = v
+                   \newline "\"\\n\""
+                   \tab "\"\\t\""
+                   \space "\" \""
+                   \formfeed "\"\\f\""
+                   (format "\"%s\"" v)))))
 
-(deftype TermTester [v]
-  Object
-  (toString [_]
-    (condp = v
-      \newline "\"\\n\""
-      \tab "\"\\t\""
-      \space "\" \""
-      \formfeed "\"\\f\""
-      (format "\"%s\"" v)))
+(defprotocol GenEBNF
+  (gen-ebnf [_]))
 
-  clojure.lang.IFn
-  (invoke [_ x]
-    (= x v)))
+(deftype Rule [name expr]
+  EndoFunctor
+  (fmap [_ f] (Rule. name (fmap expr f)))
 
-(defmethod print-method TermTester [pred w]
-  (.write w (str (.v pred))))
+  GenEBNF
+  (gen-ebnf [_]
+    (EBNF. (for [expr-ebnf (.x (evaluate expr pure-ebnf gen-ebnf))
+                 _ (parser-set-val name (str expr-ebnf " ;"))]
+             name))))
 
-(defn is-term [v]
-  (term (TermTester. v)))
+(deftype NoneOrMore [expr]
+  EndoFunctor
+  (fmap [_ f] (NoneOrMore. (fmap expr f)))
+
+  GenEBNF
+  (gen-ebnf [_]
+    (EBNF. (for [expr-ebnf (.x (evaluate expr pure-ebnf gen-ebnf))]
+             (str "{ " expr-ebnf " }")))))
+
+(deftype Opt [expr]
+  EndoFunctor
+  (fmap [_ f] (Opt. (fmap expr f)))
+
+  GenEBNF
+  (gen-ebnf [_]
+    (EBNF. (for [expr-ebnf (.x (evaluate expr pure-ebnf gen-ebnf))]
+             (str "[ " expr-ebnf " ]")))))
 
 (defmacro defrule [sym rule]
-  `(let [~sym (->Free '~sym {})]
-     (def ~sym (with-meta ~rule {:rule-name (name '~sym)}))))
+  `(let [~sym (effects.free/free (->Rule '~sym (term "")))]
+     (def ~sym (effects.free/free (->Rule '~sym ~rule)))))
 
-(defrule integer (one-or-more (apply one-of (map is-term "0123456789"))))
-(defrule upper-case (apply one-of (map is-term "ABCDEFGHIJKLMNOPQRSTUVWXYZ")))
-(defrule lower-case (apply one-of (map is-term "abcdefghijklmnopqrstuvwxyz")))
+(defn all [& parsers]
+  (fapply* (pure concat) parsers))
+
+(def one-of (comp free-plus list))
+
+(def optional (comp free ->Opt))
+
+(def none-or-more (comp free ->NoneOrMore))
+
+(defn one-or-more [parser]
+  (all parser (none-or-more parser)))
+
+
+
+
+(defn ebnf [rule]
+  (second (extract ((.x (evaluate rule pure-ebnf gen-ebnf)) {}))))
+
+(defn print-ebnf [rule]
+  (doseq [[name rule] (reverse (ebnf rule))]
+    (println name ":=" rule)))
+
+(defrule upper-case (apply one-of (map term "ABCDEFGHIJKLMNOPQRSTUVWXYZ")))
+(defrule lower-case (apply one-of (map term "abcdefghijklmnopqrstuvwxyz")))
 (defrule letter (plus upper-case lower-case))
-(defrule whitespace (apply one-of (map is-term " \n\t\f")))
+(defrule integer (all (optional (one-of (term '+) (term '-)))
+                      (apply one-of (map term "123456789"))
+                      (none-or-more (apply one-of (map term "0123456789")))))
+(defrule whitespace (apply one-of (map term " \n\t\f")))
 (defrule word (one-or-more letter))
 (defrule form (one-of integer
                       word
-                      (all (is-term \()
+                      (all (term \()
                            (none-or-more form)
                            (none-or-more whitespace)
-                           (is-term \)))))
+                           (term \)))))
 
-(defprotocol EBNF
-  (gen-ebnf [rule]))
-
-(extend-type Free
-  EBNF
-  (gen-ebnf [rule]
-    (state (str (.v rule)))))
-
-(extend-type FreeZero
-  EBNF
-  (gen-ebnf [rule]
-    (state "")))
-
-#_(extend-type FreeA
-  EBNF
-  (gen-ebnf [rule]
-    (let [rule-name (get (meta rule) :rule-name)]
-      (if (nil? rule-name)
-        (fapply* (state (fn [& args]
-                          (apply str (interpose " , " args))))
-                 (map gen-ebnf (.args rule)))
-        (for [found-name (get-val rule-name ::not-found)
-              rule-str (if (= ::not-found found-name)
-                         (for [_ (set-val rule-name "")
-                               rule-str (fapply* (state (fn [& args]
-                                                          (apply str (interpose " , " args))))
-                                                 (map gen-ebnf (.args rule)))
-                               _ (set-val rule-name (str rule-str " ;"))]
-                           rule-name)
-                         (state rule-name))]
-          rule-str)))))
-
-(extend-type FreeA
-  EBNF
-  (gen-ebnf [rule]
-    (fmap rule (constantly (state :bogus)))))
-
-(defn gen-ebnf-alts [rule]
-  (fapply* (state (fn [& args]
-                    (if (and (= 2 (count args))
-                             (= (second args) ""))
-                      (format "[ %s ]" (first args))
-                      (apply str (interpose " | " args)))))
-           (map gen-ebnf (.alts rule))))
-
-(extend-type FreePlus
-  EBNF
-  (gen-ebnf [rule]
-    (let [rule-name (get (meta rule) :rule-name)]
-      (if (nil? rule-name)
-        (gen-ebnf-alts rule)
-        (for [found-name (get-val rule-name ::not-found)
-              rule-str (if (= ::not-found found-name)
-                         (for [_ (set-val rule-name "")
-                               rule-str (gen-ebnf-alts rule)
-                               _ (set-val rule-name (str rule-str " ;"))]
-                           rule-name)
-                         (state rule-name))]
-          rule-str)))))
-
-(extend-type OneOrMore
-  EBNF
-  (gen-ebnf [rule]
-    (let [rule-name (get (meta rule) :rule-name)]
-      (if (nil? rule-name)
-        (gen-ebnf (.parser rule))
-        (for [found-name (get-val rule-name ::not-found)
-              rule-str (if (= ::not-found found-name)
-                         (for [_ (set-val rule-name "")
-                               rule-str (gen-ebnf (.parser rule))
-                               _ (set-val rule-name
-                                          (format "{ %s } ;" rule-str))]
-                           rule-name)
-                         (state rule-name))]
-          rule-str)))))
-
-#_(extend-type clojure.lang.Symbol
-  EBNF
-  (gen-ebnf [rule]
-    (state (name rule))))
-
-(defn ebnf [parser]
-  (second ((gen-ebnf parser) {})))
-
-#_(doall (map (fn [[k v]] (println k " := " v)) (ebnf form)))
-(println (extract (all (is-term "a") (plus (is-term "b")
-                                           (is-term "c")))))
+(println)
+(print-ebnf form)

@@ -38,7 +38,15 @@
   (fapply* [wrapped-f args]
     (if (= id effect)
       (flat-map wrapped-f #(comprehend % args))
-      (throw (Exception. "hey there"))))
+      (State. effect
+              (fn [s]
+                ((flat-map (State. effect (fn [s]
+                                            (effect [(fn [wrapped-f & args]
+                                                       (apply wrapped-f args))
+                                                     s])) "")
+                           #(comprehend % (cons wrapped-f args)))
+                 s))
+              (list "<fapply*>"))))
 
   Monad
   (flat-map [ev f]

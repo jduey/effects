@@ -45,13 +45,8 @@
   (fapply* [_ args]
     (AppFunc. (apply x (map #(.x %) args)))))
 
-(defn liftEndo [ev]
-  (AppFunc. (.x ev)))
-
-(defn liftPure [v]
-  (AppFunc. v))
-
-(def eval-app-expr #(evaluate % liftPure liftEndo))
+(defn eval-app-expr [expr]
+  (evaluate expr #(AppFunc. %) #(AppFunc. (.x %))))
 
 (deftest app-law-1
   (is (= (eval-app-expr (fapply inc (free (Endo. 4))))
@@ -96,9 +91,11 @@
 (defn fv-g [n]
   (fv (+ n 5)))
 
-(def eval-monad-expr #(evaluate % identity
-                                (fn eval-expr [ev]
-                                  (evaluate (.x ev) identity eval-expr))))
+(defn eval-monad-expr [expr]
+  (evaluate expr
+            identity
+            (fn eval-expr [ev]
+              (evaluate (.x ev) identity eval-expr))))
 
 (deftest first-law-fv
   (is (= (eval-monad-expr (flat-map (fv 10) fv-f))
