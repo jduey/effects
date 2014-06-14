@@ -13,20 +13,16 @@
     (XMLStr. (apply s (map #(.s %) args)))))
 
 (defn make-xml [free-tag]
-  (.s (evaluate free-tag
-                (fn [v]
-                  (XMLStr. v))
-                (fn [tag]
-                  (XMLStr. (xml tag))))))
+  (.s (evaluate free-tag ->XMLStr xml)))
 
 (deftype Tag [name attr contents]
   XML
   (xml [t]
     ;; ignoring the attributes for now
     ;; easy to add later
-    (str "<" (.name t) ">\n"
-         (make-xml (fmap contents #(apply str %)))
-         "\n</" (.name t) ">\n")))
+    (XMLStr. (str "<" (.name t) ">\n"
+                  (make-xml (fmap contents #(apply str %)))
+                  "\n</" (.name t) ">\n"))))
 
 (defn tag [name]
   (fn [attr & contents]
