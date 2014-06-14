@@ -34,7 +34,10 @@
     (plus* [_ evs]
       (if (empty? evs)
         nothing
-        (plus* (first evs) (rest evs))))))
+        (plus* (first evs) (rest evs))))
+
+    Comonad
+    (extract [_] nil)))
 
 (deftype MaybeT [e v]
   Object
