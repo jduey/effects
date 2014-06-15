@@ -203,7 +203,7 @@
 
 
 (defprotocol GenString
-  (gen-string [_]))
+  (gen-string [_ depth]))
 
 (deftype SampleString [x]
   Applicative
@@ -218,48 +218,50 @@
 (defn pure-string [v]
   (SampleString. v))
 
-
 (extend-type Opt
   GenString
-  (gen-string [p]
-    (if (= 0 (rand-int 3))
+  (gen-string [p depth]
+    (if (or (> depth 600)
+            (= 0 (rand-int 3)))
       (SampleString. "")
-      (evaluate (.expr p) pure-string gen-string))))
+      (evaluate (.expr p) pure-string #(gen-string % (inc depth))))))
 
 (extend-type NoneOrMore
   GenString
-  (gen-string [p]
-    (if (= 0 (rand-int 2))
+  (gen-string [p depth]
+    (if (or (> depth 600)
+            (= 0 (rand-int 2)))
       (SampleString. "")
-      (SampleString. (str (.x (evaluate (.expr p) pure-string gen-string))
-                          (.x (gen-string p)))))))
+      (fapply str
+              (evaluate (.expr p) pure-string #(gen-string % (inc depth)))
+              (gen-string p (inc depth))))))
 
 (extend-type Rule
   GenString
-  (gen-string [p]
+  (gen-string [p depth]
     (let [expr (or (.expr p)
                    (deref (resolve (symbol (.name p)))))]
-      (evaluate expr pure-string gen-string))))
+      (evaluate expr pure-string #(gen-string % (inc depth))))))
 
 (extend-type Ignore
   GenString
-  (gen-string [p]
-    (evaluate (.expr p) pure-string gen-string)))
+  (gen-string [p depth]
+    (evaluate (.expr p) pure-string #(gen-string % (inc depth)))))
 
 
 (defn sample-string [rule]
-  (evaluate rule pure-string gen-string))
+  (evaluate rule pure-string #(gen-string % 1)))
 
 
-#_(println)
-#_(print-ebnf form)
+(println)
+(print-ebnf form)
 
 #_(println)
 #_(prn (extract ((parser form) "(str ( add 15 92 ) )")))
 
 (println)
 #_(prn -2 (extract ((parser form) "-2")))
-(dotimes [_ 100]
+(dotimes [_ 1000]
   (let [s (.x (sample-string form))
         p (extract ((parser form) s))]
     (if (nil? p)
