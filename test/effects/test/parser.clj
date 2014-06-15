@@ -203,8 +203,65 @@
 
 
 
-(println)
-(print-ebnf form)
+(defprotocol GenString
+  (gen-string [_]))
+
+(deftype SampleString [x]
+  Applicative
+  (fapply* [_ args]
+    (SampleString. (apply str (map #(.x %) args))))
+
+  Monoid
+  (plus* [v vs]
+    (nth (cons v vs) (rand-int (inc (count vs))))))
+
+
+(defn pure-string [v]
+  (SampleString. v))
+
+
+(extend-type Opt
+  GenString
+  (gen-string [p]
+    (if (= 0 (rand-int 3))
+      (SampleString. "")
+      (evaluate (.expr p) pure-string gen-string))))
+
+(extend-type NoneOrMore
+  GenString
+  (gen-string [p]
+    (if (= 0 (rand-int 2))
+      (SampleString. "")
+      (SampleString. (str (.x (evaluate (.expr p) pure-string gen-string))
+                          (.x (gen-string p)))))))
+
+(extend-type Rule
+  GenString
+  (gen-string [p]
+    (let [expr (or (.expr p)
+                   (deref (resolve (symbol (.name p)))))]
+      (evaluate expr pure-string gen-string))))
+
+(extend-type Ignore
+  GenString
+  (gen-string [p]
+    (evaluate (.expr p) pure-string gen-string)))
+
+
+(defn sample-string [rule]
+  (evaluate rule pure-string gen-string))
+
+
+#_(println)
+#_(print-ebnf form)
+
+#_(println)
+#_(prn (extract ((parser form) "(str ( add 15 92 ) )")))
 
 (println)
-(prn (extract ((parser form) "(str ( add 15 92 ) )")))
+#_(prn -2 (extract ((parser form) "-2")))
+(dotimes [_ 100]
+  (let [s (.x (sample-string form))
+        p (extract ((parser form) s))]
+    (if (nil? p)
+      (prn s))))
