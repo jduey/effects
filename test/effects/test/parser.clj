@@ -31,7 +31,7 @@
 
 
 (defn term [v]
-  (pure v))
+  (pure (str v)))
 
 (defn all [& parsers]
   (fapply* (pure concat) parsers))
@@ -48,7 +48,7 @@
 (defrule lower-case (apply one-of (map term "abcdefghijklmnopqrstuvwxyz")))
 (defrule letter (one-of upper-case lower-case))
 
-(defrule integer (all (optional (one-of (term '+) (term '-)))
+(defrule integer (all (optional (one-of (term \+) (term \-)))
                       (apply one-of (map term "123456789"))
                       (none-or-more (apply one-of (map term "0123456789"))))
   (fn [& digits]
@@ -93,10 +93,13 @@
 
 (defn pure-parser [term]
   (if (fn? term)
-    (state-maybe term)
-    (for [[next-term] (update-state #(subs % 1))
-          :when (= term next-term)]
-      [term])))
+      (state-maybe term)
+      (let [term-len (count term)]
+        (for [text (update-state identity)
+              :when (and (<= term-len (count text))
+                         (= term (subs text 0 term-len)))
+              _ (update-state #(subs % term-len))]
+          [term]))))
 
 (extend-type Opt
   GenParser
