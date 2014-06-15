@@ -96,8 +96,7 @@
       (state-maybe term)
       (let [term-len (count term)]
         (for [text (update-state identity)
-              :when (and (<= term-len (count text))
-                         (= term (subs text 0 term-len)))
+              :when (.startsWith text term)
               _ (update-state #(subs % term-len))]
           [term]))))
 
@@ -160,10 +159,10 @@
 
 (defn pure-ebnf [v]
   (EBNF. (state-maybe (condp = v
-                        \newline "\"\\n\""
-                        \tab "\"\\t\""
-                        \space "\" \""
-                        \formfeed "\"\\f\""
+                        "\n" "\"\\n\""
+                        "\t" "\"\\t\""
+                        " " "\" \""
+                        "\f" "\"\\f\""
                         (format "\"%s\"" v)))))
 
 
