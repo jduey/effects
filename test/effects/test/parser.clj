@@ -207,6 +207,7 @@
 
 (deftype SampleString [x]
   Applicative
+  (wrap [_ v] (SampleString. v))
   (fapply* [_ args]
     (SampleString. (apply str (map #(.x %) args))))
 
@@ -250,19 +251,19 @@
 
 
 (defn sample-string [rule]
-  (evaluate rule pure-string #(gen-string % 1)))
+  (.x (evaluate rule pure-string #(gen-string % 1))))
 
 
-(println)
-(print-ebnf form)
+#_(println)
+#_(print-ebnf form)
 
 #_(println)
 #_(prn (extract ((parser form) "(str ( add 15 92 ) )")))
 
-(println)
+#_(println)
 #_(prn -2 (extract ((parser form) "-2")))
-(dotimes [_ 1000]
-  (let [s (.x (sample-string form))
+(dotimes [_ 100]
+  (let [s (sample-string form)
         p (extract ((parser form) s))]
     (if (nil? p)
       (prn s))))
