@@ -195,18 +195,3 @@
 
 (defn liftFT [f-val]
   (FreeT. (fmap f-val (fn [x] (pure (wrap f-val x))))))
-
-(def a (pure :a))
-(def ab (fapply list a (pure :b)))
-(def abc (fapply list ab (pure :c)))
-(def dabc (fapply list (pure :d) abc))
-
-(println "=======")
-(println)
-(println a)
-(println)
-(println ab)
-(println)
-(println abc)
-(println)
-(println dabc)

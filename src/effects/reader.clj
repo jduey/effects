@@ -13,32 +13,109 @@
 
 (declare reader)
 
-(deftype Reader [invoke-fn]
+(deftype Reader [effect invoke-fn val-string]
+  Object
+  (toString [_]
+    (if (= id effect)
+      (str val-string)
+      (str effect ": " val-string)))
+
   clojure.lang.IFn
   (invoke [_ s]
     (invoke-fn s))
-  (applyTo [_ [s]]
-    (invoke-fn s))
-
-  EndoFunctor
-  (fmap [rdr f]
-    (flat-map rdr (fn [x] (reader (f x)))))
+  (applyTo [_ [v]]
+    (invoke-fn v))
 
   Applicative
   (wrap [_ v]
-    (Reader. (constantly v)))
+    (Reader. effect
+            (if (= id effect)
+              (fn [s]
+                v)
+              (fn [s]
+                (effect v)))
+            (str v)))
+  (fapply* [wrapped-f args]
+    (if (= id effect)
+      (flat-map wrapped-f #(comprehend % args))
+      (throw (Exception. "hey there"))))
 
   Monad
   (flat-map [ev f]
-    (Reader. (fn [s]
-               (let [v (ev s)]
-                 ((f v) s))))))
+    (Reader. effect
+            (if (= id effect)
+              (fn [s]
+                ((f (ev s)) s))
+              (fn [s]
+                (flat-map (ev s)
+                          (fn [v]
+                            ((f v) s)))))
+            (list "<flat-map>")))
 
-(defn reader [v]
-  (Reader. (constantly v)))
+  MonadZero
+  (zero [_]
+    (Reader. effect
+            (fn [s] (zero (effect :nil)))
+            (str (zero (effect :nil)))))
+  (m-plus* [mv mvs]
+    (Reader. effect
+            (fn [s]
+              (let [x (mv s)]
+                (cond
+                 (empty? mvs) x
+                 (= (zero (effect :nil)) x) ((apply m-plus mvs) s)
+                 :else x)))
+            (list "<m-plus*>"))))
 
-(def read-environment (Reader. identity))
+(def reader
+  (reify
+    Object
+    (toString [_] (list "<Reader>"))
 
-(defn read-val [key]
-  (flat-map read-environment
+    clojure.lang.IFn
+    (invoke [effect v]
+      (Reader. id
+               (fn [s] v)
+               (str v)))
+
+    Effects
+    (ecomp* [effect effects]
+      (let [e (if (empty? effects)
+                id
+                (apply ecomp effects))]
+        (reify
+          Object
+          (toString [_]
+            (if (= id e)
+              "<Reader>"
+              (str "<Reader " e ">")))
+
+          clojure.lang.IFn
+          (invoke [_ v]
+            (Reader. e
+                    (if (= e id)
+                      (fn [s]
+                        v)
+                      (fn [s]
+                        (e v)))
+                    (str v))))))))
+
+(defmethod print-method (type reader) [_ w]
+  (.write w "#<Reader>"))
+
+(defn read-context
+  "Return a reader-monad value that returns the current context"
+  []
+  (->Reader id identity "<read-context>"))
+
+(defn read-val
+  "Return a reader-monad value that assumes the context to be a map and
+   returns the value corresponding to the given key."
+  [key]
+  (flat-map (read-context)
             #(reader (get % key))))
+
+
+(defn read-in-val [path & [default]]
+  (flat-map (read-context)
+            #(reader (get-in % path default))))
