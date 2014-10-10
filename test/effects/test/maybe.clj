@@ -10,6 +10,7 @@
   (:refer-clojure :exclude [extend for])
   (:require [clojure.test :refer :all]
             [effects :refer :all]
+            [effects.state :refer :all]
             [effects.maybe :refer :all]))
 
 (defn maybe-f [n]
@@ -110,3 +111,48 @@
          (mm 6)))
   (is (= (plus (zero (mm nil)) (mm 6))
          (mm 6))))
+
+
+
+(def sm (plus state maybe))
+(defn sm-f [n]
+  (sm (inc n)))
+
+(defn sm-g [n]
+  (sm (+ n 5)))
+
+#_(deftest sm-functor
+  (is (= (zero (sm nil)) (fmap (zero (sm nil)) inc)))
+  (is (= (sm 2) (fmap (sm 2) identity)))
+  (is (= (sm 5) (fmap (sm 4) inc))))
+
+(deftest sm-applicative
+  (is (= ((zero (sm nil)) :s)
+         ((fapply list (zero (sm nil)) (sm 8)) :s)))
+  (is (= ((zero (sm nil)) :s)
+         ((fapply list (sm 8) (zero (sm nil))) :s)))
+  (is (= ((sm [8 9]) :s)
+         ((fapply list (sm 8) (sm 9)) :s))))
+
+(deftest first-law-sm
+  (is (= ((flat-map (sm 10) sm-f) :s)
+         ((sm-f 10) :s))))
+
+(deftest second-law-sm
+  (is (= ((flat-map (sm 10) sm) :s)
+         ((sm 10) :s))))
+
+(deftest third-law-sm
+  (is (= ((flat-map (flat-map (sm 5) sm-f) sm-g) :s)
+         ((flat-map (sm 5) (fn [x]
+                             (flat-map (sm-f x) sm-g))) :s))))
+
+(deftest zero-law-sm
+  (is (= ((flat-map (zero (sm nil)) sm-f) :s)
+         ((zero (sm nil)) :s)))
+  (is (= ((flat-map (sm 4) (constantly (zero (sm nil)))) :s)
+         ((zero (sm nil)) :s)))
+  (is (= ((plus (sm 6) (zero (sm nil))) :s)
+         ((sm 6) :s)))
+  (is (= ((plus (zero (sm nil)) (sm 6)) :s)
+         ((sm 6) :s))))
