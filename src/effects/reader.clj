@@ -52,18 +52,18 @@
                             ((f v) s)))))
             (list "<flat-map>")))
 
-  MonadZero
+  Monoid
   (zero [_]
     (Reader. effect
             (fn [s] (zero (effect :nil)))
             (str (zero (effect :nil)))))
-  (m-plus* [mv mvs]
+  (plus* [mv mvs]
     (Reader. effect
             (fn [s]
               (let [x (mv s)]
                 (cond
                  (empty? mvs) x
-                 (= (zero (effect :nil)) x) ((apply m-plus mvs) s)
+                 (= (zero (effect :nil)) x) ((apply plus mvs) s)
                  :else x)))
             (list "<m-plus*>"))))
 
@@ -78,11 +78,11 @@
                (fn [s] v)
                (str v)))
 
-    Effects
-    (ecomp* [effect effects]
+    Monoid
+    (plus* [effect effects]
       (let [e (if (empty? effects)
                 id
-                (apply ecomp effects))]
+                (apply plus effects))]
         (reify
           Object
           (toString [_]
