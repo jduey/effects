@@ -26,6 +26,9 @@
   (wrap [x v])
   (fapply* [wrapped-f args]))
 
+(defprotocol Traversable
+  (traverse [coll f]))
+
 (defn fapply [f arg & args]
   (fapply* (wrap arg f) (cons arg args)))
 

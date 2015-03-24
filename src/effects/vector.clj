@@ -22,6 +22,11 @@
   (fapply* [f args]
     (flat-map f #(comprehend % args)))
 
+  Traversable
+  (traverse [v f]
+    (let [vs (map v f)]
+      (fapply* (wrap (first vs) vector) vs)))
+
   Monad
   (flat-map [vs f]
     (vec (mapcat f vs)))

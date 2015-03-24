@@ -86,6 +86,10 @@
       (State. id
               (fn [s] (list v s))
               (str v)))
+    (applyTo [_ [v]]
+      (State. id
+              (fn [s] (list v s))
+              (str v)))
 
     Monoid
     (plus* [effect effects]
@@ -100,6 +104,14 @@
               (str "<State " e ">")))
 
           clojure.lang.IFn
+          (applyTo [_ [v]]
+            (State. e
+                    (if (= e id)
+                      (fn [s]
+                        (list v s))
+                      (fn [s]
+                        (e (list v s))))
+                    (str v)))
           (invoke [_ v]
             (State. e
                     (if (= e id)
